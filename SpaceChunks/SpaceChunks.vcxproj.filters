@@ -13,15 +13,42 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\XyEngine">
+      <UniqueIdentifier>{9aed4b6d-c241-4232-acc0-51c4e2fc7cac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\XyEngine">
+      <UniqueIdentifier>{43bcf6a9-662f-40db-aae8-c797e3740a2d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SpaceChunks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="XyEngine.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="Game.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SpaceChunks.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
+      <Filter>Source Files\XyEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="XyEngine.cpp">
+      <Filter>Source Files\XyEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Source Files\XyEngine</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

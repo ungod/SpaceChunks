@@ -1,58 +1,31 @@
 #include "SpaceChunks.h"
 
-GLFWwindow* window;
+#include "Shader.h"
+#include "Mesh.h"
 
-int main(int argc, char **argv)
+Shader* shader;
+Mesh* mesh;
+
+Vertex vertices[] = { Vertex(glm::vec3(-0.5, -0.5, 0)), 
+					  Vertex(glm::vec3( 0,    0.5, 0)), 
+					  Vertex(glm::vec3( 0.5, -0.5, 0))};
+
+int main()
 {
-	if (!glfwInit())
+	engine->CreateWindow(800, 600, "SpaceChunks", true);
+
+	shader = new Shader("shaders/basicShader");
+	mesh = new Mesh(vertices, sizeof(vertices) / sizeof(vertices[0]));
+
+	while (engine->Running())
 	{
-		printf("GLFW Failed to Init!");
-		return EXIT_FAILURE;
+		shader->Bind();
+		mesh->Draw();
+
+		engine->RenderScene();
 	}
+	engine->DestroyWindow();
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	window = glfwCreateWindow(640, 480, "Space Chunks", NULL, NULL);
-
-	if (!window)
-	{
-		glfwTerminate();
-		printf("GLFW Failed to Create the Window!");
-		return EXIT_FAILURE;
-	}
-
-	glfwMakeContextCurrent(window);
-
-	if (glewInit() != GLEW_OK)
-	{
-		printf("GLEW Failed To Init");
-		return EXIT_FAILURE;
-	}
-
-	printf("OpenGL Version: (%s)", glGetString(GL_VERSION));
-
-	while (!glfwWindowShouldClose(window))
-	{
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	}
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
-
-	return EXIT_SUCCESS;
+	return 0;
 }
 
-SpaceChunks::SpaceChunks()
-{
-}
-
-
-SpaceChunks::~SpaceChunks()
-{
-}
