@@ -21,6 +21,11 @@ Shader::Shader(const std::string& fileName)
 
 }
 
+GLuint Shader::GetShaderProgram()
+{
+	return m_program;
+}
+
 Shader::~Shader()
 {
 	for (unsigned int i = 0; i < NUM_SHADERS; i++)

@@ -10,6 +10,37 @@ GLFWwindow* XyEngine::GetWindow()
 	return m_Window;
 }
 
+double XyEngine::GetTime()
+{
+	return glfwGetTime();
+}
+
+void XyEngine::SetShaderUniform(GLint location, GLfloat v_)
+{
+	return glUniform1f(location, v_);
+}
+
+void XyEngine::SetShaderUniform(GLint location, GLfloat v_, GLfloat v1)
+{
+	return glUniform2f(location, v_, v1);
+}
+
+void XyEngine::SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2)
+{
+	return glUniform3f(location, v_, v1, v2);
+}
+
+void XyEngine::SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2, GLfloat v3)
+{
+	return glUniform4f(location, v_, v1, v2, v3);
+}
+
+GLint XyEngine::GetShaderUniform(GLuint program, const GLchar *name)
+{
+	return glGetUniformLocation(program, name);
+
+}
+
 int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_3_3_Enabled)
 {
 	printf("[XYENGINE] XyEngine is Loading... \n");

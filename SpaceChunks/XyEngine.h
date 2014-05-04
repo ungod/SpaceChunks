@@ -25,7 +25,15 @@ public:
 	int CreateWindow(int width, int height, char* title, bool OpenGL_3_2_Enabled);
 	void DestroyWindow();
 
+	GLint GetShaderUniform(GLuint program, const GLchar *name);
+	void SetShaderUniform(GLint location, GLfloat v_);
+	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1);
+	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2);
+	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2, GLfloat v3);
+
 	void RenderScene();
+
+	double GetTime();
 
 	GLFWwindow* GetWindow();
 
