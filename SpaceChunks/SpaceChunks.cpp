@@ -1,4 +1,4 @@
-#include "SpaceChunks.h"
+#include "Game.h"
 
 #include "Shader.h"
 #include "Mesh.h"
@@ -6,10 +6,9 @@
 Shader* shader;
 Mesh* mesh;
 
-Vertex vertices[] = { Vertex(glm::vec3(-0.5,  0.5, 0)), 
-					  Vertex(glm::vec3( 0.5,  0.5, 0)), 
-					  Vertex(glm::vec3( 0.5, -0.5, 0)),
-					  Vertex(glm::vec3( -0.5, -0.5, 0)) };
+Vertex vertices[] = { Vertex(glm::vec3(-0.5, -0.5, 0.0)), 
+					  Vertex(glm::vec3(-0.5,  0.5, 0.0)), 
+					  Vertex(glm::vec3( 0.5,  0.5, 0.0))};
 
 int main()
 {
@@ -22,7 +21,7 @@ int main()
 
 	while (engine->Running())
 	{		
-		engine->SetShaderUniform(uniColor, 0.0f, 1.0f, 0.0f);
+		engine->SetShaderUniform(uniColor, 0.2f, 0.3f, 0.8f);
 
 		shader->Bind();
 		mesh->Draw();

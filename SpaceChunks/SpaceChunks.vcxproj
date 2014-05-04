@@ -134,7 +134,6 @@
     <ClInclude Include="Game.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="SpaceChunks.h" />
     <ClInclude Include="XyEngine.h" />
   </ItemGroup>
   <ItemGroup>
