@@ -1,11 +1,10 @@
-#version 330 core
+#version 400 core
 
-in vec2 position;
+in vec3 position;
 
-varying vec2 color;
+uniform mat4 matrix;
 
 void main()
 {
-	color = position;
-	gl_Position = vec4(position, 0.0, 1.0);
+	gl_Position = matrix * vec4 (position, 1.0);
 }

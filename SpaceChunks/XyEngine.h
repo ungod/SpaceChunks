@@ -22,7 +22,7 @@ public:
 	XyEngine();
 	~XyEngine();
 
-	int CreateWindow(int width, int height, char* title, bool OpenGL_3_2_Enabled);
+	int CreateWindow(int, int, char*, bool, int);
 	void DestroyWindow();
 
 	GLint GetShaderUniform(GLuint program, const GLchar *name);

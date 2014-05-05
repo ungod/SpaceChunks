@@ -41,7 +41,7 @@ GLint XyEngine::GetShaderUniform(GLuint program, const GLchar *name)
 
 }
 
-int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_3_3_Enabled)
+int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_4_0_Enabled, int samples)
 {
 	printf("[XYENGINE] XyEngine is Loading... \n");
 
@@ -51,17 +51,19 @@ int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_3_3_E
 		return EXIT_FAILURE;
 	}
 
-	if (OpenGL_3_3_Enabled)
+	if (OpenGL_4_0_Enabled)
 	{
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		printf("[XYENGINE] XyEngine is Running in OpenGL 3.3+ Core Profie! \n");
+
+		glfwWindowHint(GLFW_SAMPLES, samples);
+
+		printf("[XYENGINE] XyEngine is Running in OpenGL 4.0 Core Profie! \n");
 	}
 	else
 	{
-		printf("[XYENGINE] XyEngine is Running in Legacy Mode (Pre OpenGL 3.3)! \n");
+		printf("[XYENGINE] XyEngine is Running in Legacy Mode (Pre OpenGL 4.0)! \n");
 	}
 
 
@@ -82,6 +84,8 @@ int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_3_3_E
 		printf("[CORE] GLEW Failed To Init \n");
 		return EXIT_FAILURE;
 	}
+
+	return EXIT_SUCCESS;
 }
 
 bool XyEngine::Running()

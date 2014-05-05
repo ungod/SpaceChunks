@@ -1,12 +1,10 @@
-#version 330 core
+#version 400 core
 
-varying vec2 color;
+uniform vec4 inputColour;
 
-uniform vec3 triangleColor;
-
-out vec4 outColor;
+out vec4 fragColour;
 
 void main()
 {
-	outColor = vec4(color, 1.0, 1.0);
+	fragColour = inputColour;
 }
