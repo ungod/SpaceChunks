@@ -42,6 +42,11 @@ void Shader::Bind()
 	glUseProgram(m_program);
 }
 
+void Shader::UnBind()
+{
+	glUseProgram(0);
+}
+
 std::string Shader::LoadShader(const std::string& fileName)
 {
 	std::ifstream file;

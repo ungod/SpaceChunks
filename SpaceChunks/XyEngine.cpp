@@ -5,14 +5,59 @@ XyEngine::XyEngine()
 {
 }
 
-GLFWwindow* XyEngine::GetWindow()
+void XyEngine::ClearScreen(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
+{
+	glClearColor(red, green, blue, alpha);
+}
+
+void XyEngine::ClearScreen(GLbitfield mask)
+{
+	glClear(mask);
+}
+
+void XyEngine::CreateList(GLuint id)
+{
+	glNewList(id, GL_COMPILE);
+}
+
+void XyEngine::CallList(GLuint id)
+{
+	glCallList(id);
+}
+
+void XyEngine::EnableImmediateMode(GLenum mode)
+{
+	glBegin(mode);
+}
+
+void XyEngine::DisableImmediateMode()
+{
+	glEnd();
+}
+
+void XyEngine::EndList()
+{
+	glEndList();
+}
+
+void XyEngine::ImmediateNormal(GLfloat x, GLfloat y, GLfloat z)
+{
+	glNormal3f(x, y, z);
+}
+
+void XyEngine::ImmediateVertex(GLfloat x, GLfloat y, GLfloat z)
+{
+	glVertex3f(x, y, z);
+}
+
+SDL_Window* XyEngine::GetWindow()
 {
 	return m_Window;
 }
 
 double XyEngine::GetTime()
 {
-	return glfwGetTime();
+	return 0;
 }
 
 void XyEngine::SetShaderUniform(GLint location, GLfloat v_)
@@ -45,7 +90,7 @@ int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_4_0_E
 {
 	printf("[XYENGINE] XyEngine is Loading... \n");
 
-	if (!glfwInit())
+	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 	{
 		printf("[CORE] GLFW Failed to Init! \n");
 		return EXIT_FAILURE;
@@ -53,11 +98,9 @@ int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_4_0_E
 
 	if (OpenGL_4_0_Enabled)
 	{
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-		glfwWindowHint(GLFW_SAMPLES, samples);
+		//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+		//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 		printf("[XYENGINE] XyEngine is Running in OpenGL 4.0 Core Profie! \n");
 	}
@@ -67,17 +110,17 @@ int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_4_0_E
 	}
 
 
-	m_Window = glfwCreateWindow(width, height, title, NULL, NULL);
+	m_Window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
 
-	if (!m_Window)
+	if (m_Window == NULL)
 	{
-		glfwTerminate();
+		SDL_Quit();
 		printf("[CORE] GLFW Failed to Create the Window! \n");
 		return EXIT_FAILURE;
 	}
 
 
-	glfwMakeContextCurrent(m_Window);
+	glcontext = SDL_GL_CreateContext(m_Window);
 
 	if (glewInit() != GLEW_OK)
 	{
@@ -85,26 +128,31 @@ int XyEngine::CreateWindow(int width, int height, char* title, bool OpenGL_4_0_E
 		return EXIT_FAILURE;
 	}
 
+	m_running = true;
 	return EXIT_SUCCESS;
 }
 
 bool XyEngine::Running()
 {
-	return !glfwWindowShouldClose(m_Window);
+	return m_running;
 }
 
-void XyEngine::RenderScene()
+SDL_Event XyEngine::GetEvent()
 {
-	glfwSwapBuffers(m_Window);
-	glfwPollEvents();
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	return event;
+}
+
+bool XyEngine::IsMouseIn()
+{
+	return mousein;
 }
 
 void XyEngine::DestroyWindow()
 {
 	printf("[CORE] XyEngine is shutting down... \n");
-	glfwDestroyWindow(m_Window);
-	glfwTerminate();
+	SDL_GL_DeleteContext(glcontext);
+	SDL_DestroyWindow(m_Window);
+	SDL_Quit();
 }
 
 XyEngine::~XyEngine()

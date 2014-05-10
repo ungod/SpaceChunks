@@ -9,6 +9,7 @@ public:
 	Shader(const std::string& fileName);
 	GLuint GetShaderProgram();
 	void Bind();
+	void UnBind();
 	virtual ~Shader();
 protected:
 private:
