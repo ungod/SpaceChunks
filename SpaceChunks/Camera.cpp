@@ -5,12 +5,29 @@ float camX = 0.0, camY = 0.0, camZ = 5.0;
 float camYaw = 0.0;
 float camPitch = 0.0;
 
-int MidX = 1280 / 2;
-int MidY = 720 / 2;
-
 #ifndef M_PI
 #define M_PI = 3.14159265358979
 #endif
+
+float getcamYaw()
+{
+	return camYaw;
+}
+
+float getCamPitch()
+{
+	return camPitch;
+}
+
+void setCamPitch(float pitch)
+{
+	camPitch = pitch;
+}
+
+void setCamYaw(float yaw)
+{
+	camYaw = yaw;
+}
 
 float getCamX()
 {
@@ -101,13 +118,11 @@ void Control(float movevel, float mousevel, bool mi)      //move and mouse sensi
 		}
 		else if (state[SDL_SCANCODE_SPACE])
 		{
-			if (camPitch != 90 && camPitch != -90)
-				moveCameraUp(movevel, 180.0);
-			moveCameraUp(movevel, -90.0);
+			camY += movevel;
 		}
 		else if (state[SDL_SCANCODE_LSHIFT])
 		{
-			moveCameraUp(movevel, 0.0);
+			camY -= movevel;
 		}
 
 	}

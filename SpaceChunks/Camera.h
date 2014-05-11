@@ -13,6 +13,12 @@ float getCamX();
 float getCamY();
 float getCamZ();
 
+float getCamPitch();
+float getcamYaw();
+
+void setCamPitch(float pitch);
+void setCamYaw(float yaw);
+
 void setCamX(float);
 void setCamY(float);
 void setCamZ(float);

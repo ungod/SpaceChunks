@@ -31,7 +31,8 @@ void initskybox(float size)
 
 	bool b1 = glIsEnabled(GL_TEXTURE_2D);     //new, we left the textures turned on, if it was turned on
 	glDisable(GL_LIGHTING); //turn off lighting, when making the skybox
-	glDisable(GL_DEPTH_TEST);       //turn off depth texting
+	glDisable(GL_DEPTH_TEST); 
+	glDisable(GL_CULL_FACE);
 	glEnable(GL_TEXTURE_2D);        //and turn on texturing
 	glBindTexture(GL_TEXTURE_2D, skybox[SKY_BACK]);  //use the texture we want
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -141,6 +142,7 @@ void initskybox(float size)
 	if (!b1)
 		glDisable(GL_TEXTURE_2D);
 
+	glEnable(GL_CULL_FACE);
 	glEndList();
 }
 //delete all of the textures from the skybox array (to avoid memory leaks)

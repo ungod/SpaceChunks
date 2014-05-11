@@ -3,31 +3,45 @@
 #include "Shader.h"
 #include "Player.h"
 #include "Chunk.h"
+#include <sstream>
+bool chunkRen = false;
 
 Shader* shader;
 Chunk* chunk;
-Player player(glm::vec3(0, 0, 0));
+Chunk* chunk2;
+Player player(glm::vec3(5, 17, 5), 0, 180);
 
-float frameRate = 75;
+float frameRate = 60;
 
 float m_frameTime = 1.0 / frameRate;
 
 bool mousein = false;
 
+SDL_Color color;
+SDL_Rect position;
+
+TTF_Font *font;
+
+int frames = 0;
+
+int framerate;
+
 void Init()
 {
-	chunk = new Chunk(glm::vec3(0, 0, 0));
+	chunk = new Chunk(0, 0, 0);
+	chunk2 = new Chunk(16, 0, 0);
 	shader = new Shader("shaders/basicShader");
 
 	//GLint uniColor = engine->GetShaderUniform(shader->GetShaderProgram(), "inputColour");
 
+
+	font = TTF_OpenFont("fonts/font.ttf", 18);
 	glClearColor(0.12f, 0.56f, 1.0f, 1.0f);
 
-	glViewport(0, 0, 1280, 720);
+	glViewport(0, 0, windowWidth, windowHeight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(67.5, (float)1280 / (float)720, 0.1f, 1000.0f);
-	glOrtho(0, 0, 720, 1280, 0.1, 1000);
+	gluPerspective(60.0, windowWidth / windowHeight, 0.01, 1000.0);
 	glMatrixMode(GL_MODELVIEW);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_LIGHTING);
@@ -41,34 +55,111 @@ void Init()
 	glLightfv(GL_LIGHT0, GL_AMBIENT, AmbientLight);
 	glLightfv(GL_LIGHT0, GL_SPECULAR, SpecularLight);
 
+
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	player.Init();
 
 	chunk->CreateChunk();
+	chunk2->CreateChunk();
+}
+
+void Make3D()
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity(); 
+	gluPerspective(60.0, windowWidth / windowHeight, 0.01, 1000.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	glEnable(GL_DEPTH_TEST);
+}
+
+void Make2D()
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0, windowWidth, windowHeight, 0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_CULL_FACE);
 }
 
 void Render()
 {
-	glDepthMask(GL_TRUE);
-	engine->ClearScreen(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	engine->ClearScreen(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	float pos[] = { 0.4, -1.0, 0.4, 0.4 };
 	glLightfv(GL_LIGHT0, GL_POSITION, pos);
 
-	glLoadIdentity();
+	Make3D();
 
 	player.Update(mousein);
 
 	if (mousein)
-		SDL_WarpMouseInWindow(engine->GetWindow(), 1280 / 2, 720 / 2);
+		SDL_WarpMouseInWindow(engine->GetWindow(), MidX, MidY);
 
 	
-
 	chunk->UpdateChunk();
+	chunk2->UpdateChunk();
+
+
+	Make2D();
+
+	color.r = 255;
+	color.g = 255;
+	color.b = 255;
+
+	position.x = 5;
+	position.y = 0;
+
+	std::string fpsRen;
+
+	std::ostringstream con;
+
+	con << framerate;
+
+	fpsRen = con.str();
+
+
+	engine->RenderText(font, 255, 255, 255, 5, 0, 0, "Space Chunks Alpha 0.2");
+	engine->RenderText(font, 255, 255, 255, 5, 20, 0, "(C) 2014 Dominic Maas");
+	engine->RenderText(font, 255, 255, 255, 5, 40, 0, "FPS: " + fpsRen);
+
+	glm::vec3 playerPos = player.GetPos();
+	std::ostringstream con2;
+	std::string px;
+
+	con2 << " X: " << (int)playerPos.x << " Y: " << (int)playerPos.y << " Z: " << (int)playerPos.z;
+
+	px = con2.str();
+
+	
+	engine->RenderText(font, 255, 255, 255, 5, 60, 0, "Player Position: " + px);
+
+	std::ostringstream con3;
+	std::string py;
+
+	con3 << " Pitch: " << (int)player.getPitch() << " Yaw: " << (int)player.getYaw();
+
+	py = con3.str();
+
+	engine->RenderText(font, 255, 255, 255, 5, 80, 0, "Player Rotation: " + py);
 }
 
 int main(int, char**)
 {
-	engine->CreateWindow(1280, 720, "SpaceChunks", false, 16);
+	engine->CreateWindow(windowWidth, windowHeight, "SpaceChunks", false, 16);
+
+	TTF_Init();
 
 	if (!IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG))
 	{
@@ -81,7 +172,7 @@ int main(int, char**)
 	double lastTime = Time::GetTime();
 	double unprocessedTime = 0;
 	double frameCounter = 0;
-	int frames = 0;
+	frames = 0;
 
 	SDL_Event event;
 
@@ -100,8 +191,12 @@ int main(int, char**)
 
 		if (frameCounter >= 1.0)
 		{
+			std::cout << frames << std::endl;
+			framerate = frames;
 			frames = 0;
 			frameCounter = 0;
+
+			
 		}
 
 		while (unprocessedTime > m_frameTime)
@@ -129,6 +224,15 @@ int main(int, char**)
 					case SDLK_ESCAPE:
 						mousein = false;
 						SDL_ShowCursor(SDL_ENABLE);
+						break;
+					case SDLK_0:
+						chunk->setBlock(0, 0, 0, 0);
+						break;
+					case SDLK_1:
+						chunk->setBlock(0, 0, 0, 1);
+						break;
+					case SDLK_m:
+						chunkRen = !chunkRen;
 						break;
 					}
 				}

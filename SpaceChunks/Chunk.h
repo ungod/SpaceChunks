@@ -7,7 +7,7 @@
 class Chunk
 {
 public:
-	Chunk(glm::vec3 pos);
+	Chunk(int x, int y, int z);
 	void CreateChunk();
 	void RebuildChunk();
 	void DisposeChunk();
@@ -34,6 +34,11 @@ private:
 	bool showChunkFaces = false;
 	int chunkID;
 	float difamb[4];
+
+	int m_x;
+	int m_y;
+		
+	int m_z;
 
 	XyEngine *renderer = new XyEngine();
 };

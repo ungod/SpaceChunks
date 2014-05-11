@@ -1,14 +1,19 @@
 #include "Chunk.h"
 
+unsigned int tex;
 
-
-Chunk::Chunk(glm::vec3 pos)
+Chunk::Chunk(int x, int y, int z)
 {
+	m_x = x;
+	m_y = y;
+	m_z = z;
+
 	memset(m_blocks, 0, sizeof m_blocks);
 	m_disposed = false;
-	this->m_position = pos;
+	
 	m_changed = true;
 	chunkID = glGenLists(1);
+	tex = renderer->LoadTexture("img/dirt.jpg");
 }
 
 void Chunk::CreateChunk()
@@ -19,13 +24,7 @@ void Chunk::CreateChunk()
 		{
 			for (int z = 0; z < CHUNK_Z; z++)
 			{
-				if (rand() % 10)
-				{
-					m_blocks[x][y][z] = 1; //Dirt ID
-				}
-				else {
-					m_blocks[x][y][z] = 0; //Air ID
-				}
+				m_blocks[x][y][z] = 1; //Dirt ID
 			}
 		}
 	}
@@ -36,14 +35,11 @@ void Chunk::CreateChunk()
 void Chunk::RebuildChunk()
 {
 	glNewList(chunkID, GL_COMPILE);
-	glPushMatrix();
 
-	unsigned int tex = renderer->LoadTexture("img/dirt.jpg");
+	glDisable(GL_LIGHTING);
 
-	glDisable(GL_LIGHTING); //turn off lighting, when making the skybox
-	glDisable(GL_DEPTH_TEST);       //turn off depth texting
-	glEnable(GL_TEXTURE_2D);        //and turn on texturing
-
+	glEnable(GL_TEXTURE_2D);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glBindTexture(GL_TEXTURE_2D, tex);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -52,7 +48,6 @@ void Chunk::RebuildChunk()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	glBegin(GL_QUADS);
-
 	for (int x = 0; x < CHUNK_X; x++)
 	{
 		for (int y = 0; y < CHUNK_Y; y++)
@@ -65,8 +60,8 @@ void Chunk::RebuildChunk()
 					{
 						difamb[0] = 0.0f;
 						difamb[1] = 0.75f;
-						difamb[2] = 0.10f;
-						difamb[3] = 1.0f;
+						difamb[2] = 0.0f;
+						difamb[3] = 0.5f;
 					}
 					else if (m_blocks[x][y][z] == 2){
 						difamb[0] = 0.25f;
@@ -178,22 +173,16 @@ void Chunk::RebuildChunk()
 	}
 	glEnd();
 
-	glEnable(GL_LIGHTING);  //turn everything back, which we turned on, and turn everything off, which we have turned on.
-	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_LIGHTING);
 	glDisable(GL_TEXTURE_2D);
-
-	glTranslatef(m_position.x, m_position.y, m_position.z);
-
-	glDisable(GL_BLEND);
-	glPopMatrix();
-
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glEndList();
 }
 
 void Chunk::UpdateChunk()
 {
 	glEnable(GL_DEPTH_TEST);
-
+	glTranslatef(m_x, m_y, m_z);
 	glCallList(chunkID);
 
 	if (m_changed)
@@ -238,7 +227,6 @@ IsBlockInView checks blocks around it, if all blocks around it are not air block
 bool Chunk::IsBlockInView(int x, int y, int z)
 {
 	bool facesHidden[6];
-
 	if (x > 0) {
 		if (!m_blocks[x - 1][y][z] == 0) facesHidden[0] = true;
 		else facesHidden[0] = false;
