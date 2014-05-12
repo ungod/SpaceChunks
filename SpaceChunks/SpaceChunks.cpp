@@ -1,14 +1,11 @@
 #include "Game.h"
 
-#include "Shader.h"
 #include "Player.h"
 #include "Chunk.h"
 #include <sstream>
 bool chunkRen = false;
 
-Shader* shader;
 Chunk* chunk;
-Chunk* chunk2;
 Player player(glm::vec3(5, 17, 5), 0, 180);
 
 float frameRate = 60;
@@ -17,23 +14,15 @@ float m_frameTime = 1.0 / frameRate;
 
 bool mousein = false;
 
-SDL_Color color;
-SDL_Rect position;
-
 TTF_Font *font;
 
 int frames = 0;
 
-int framerate;
+int fpsRate;
 
 void Init()
 {
 	chunk = new Chunk(0, 0, 0);
-	chunk2 = new Chunk(16, 0, 0);
-	shader = new Shader("shaders/basicShader");
-
-	//GLint uniColor = engine->GetShaderUniform(shader->GetShaderProgram(), "inputColour");
-
 
 	font = TTF_OpenFont("fonts/font.ttf", 18);
 	glClearColor(0.12f, 0.56f, 1.0f, 1.0f);
@@ -51,10 +40,12 @@ void Init()
 	const GLfloat DiffuseLight[] = { 0.5f, 0.5f, 0.5f, 0.5f };
 	const GLfloat AmbientLight[] = { 0.5f, 0.5f, 0.5f, 0.5f };
 	const GLfloat SpecularLight[] = { 0.5f, 0.5f, 0.5f, 0.5f };
+	const GLfloat PositonLight[] = { 0.4, -1.0, 0.4, 0.4 };
+	
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, DiffuseLight);
 	glLightfv(GL_LIGHT0, GL_AMBIENT, AmbientLight);
 	glLightfv(GL_LIGHT0, GL_SPECULAR, SpecularLight);
-
+	glLightfv(GL_LIGHT0, GL_POSITION, PositonLight);
 
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
@@ -64,108 +55,39 @@ void Init()
 	player.Init();
 
 	chunk->CreateChunk();
-	chunk2->CreateChunk();
-}
-
-void Make3D()
-{
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity(); 
-	gluPerspective(60.0, windowWidth / windowHeight, 0.01, 1000.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glEnable(GL_DEPTH_TEST);
-}
-
-void Make2D()
-{
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluOrtho2D(0, windowWidth, windowHeight, 0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_CULL_FACE);
 }
 
 void Render()
 {
+	/* New Render System (Upgrading) */
 
 	engine->ClearScreen(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-	float pos[] = { 0.4, -1.0, 0.4, 0.4 };
-	glLightfv(GL_LIGHT0, GL_POSITION, pos);
+	engine->Set3D();
+		player.Update(mousein);
+		chunk->UpdateChunk();
 
-	Make3D();
+	engine->Set2D();
+		engine->RenderText(font, 5, 0, "Space Chunks Alpha 0.2");
+		engine->RenderText(font, 5, 20, "(C) 2014 Dominic Maas");
+		engine->RenderText(font, 5, 40, "FPS: " + engine->ConvertIntToString(fpsRate));
 
-	player.Update(mousein);
+		engine->RenderText(font, 5, 80, "Chunk Updates: 0");
+		engine->RenderText(font, 5, 100, "Chunk Rendered: 1");
 
-	if (mousein)
-		SDL_WarpMouseInWindow(engine->GetWindow(), MidX, MidY);
+		glm::vec3 playerPos = player.GetPos();
 
-	
-	chunk->UpdateChunk();
-	chunk2->UpdateChunk();
+		std::string playerPosStr = " X: " + engine->ConvertIntToString((int)playerPos.x) + " Y: " + engine->ConvertIntToString((int)playerPos.y) + " Z: " + engine->ConvertIntToString((int)playerPos.z);
+		engine->RenderText(font, 5, windowHeight - 45, "Player Position: " + playerPosStr);
 
+		std::string playerRotStr = " Pitch: " + engine->ConvertIntToString((int)player.getPitch()) + " Yaw: " + engine->ConvertIntToString((int)player.getYaw());
 
-	Make2D();
-
-	color.r = 255;
-	color.g = 255;
-	color.b = 255;
-
-	position.x = 5;
-	position.y = 0;
-
-	std::string fpsRen;
-
-	std::ostringstream con;
-
-	con << framerate;
-
-	fpsRen = con.str();
-
-
-	engine->RenderText(font, 255, 255, 255, 5, 0, 0, "Space Chunks Alpha 0.2");
-	engine->RenderText(font, 255, 255, 255, 5, 20, 0, "(C) 2014 Dominic Maas");
-	engine->RenderText(font, 255, 255, 255, 5, 40, 0, "FPS: " + fpsRen);
-
-	glm::vec3 playerPos = player.GetPos();
-	std::ostringstream con2;
-	std::string px;
-
-	con2 << " X: " << (int)playerPos.x << " Y: " << (int)playerPos.y << " Z: " << (int)playerPos.z;
-
-	px = con2.str();
-
-	
-	engine->RenderText(font, 255, 255, 255, 5, 60, 0, "Player Position: " + px);
-
-	std::ostringstream con3;
-	std::string py;
-
-	con3 << " Pitch: " << (int)player.getPitch() << " Yaw: " << (int)player.getYaw();
-
-	py = con3.str();
-
-	engine->RenderText(font, 255, 255, 255, 5, 80, 0, "Player Rotation: " + py);
+		engine->RenderText(font, 5, windowHeight - 25, "Player Rotation: " + playerRotStr);
 }
 
 int main(int, char**)
 {
-	engine->CreateWindow(windowWidth, windowHeight, "SpaceChunks", false, 16);
-
-	TTF_Init();
-
-	if (!IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG))
-	{
-		printf("IMG_Init: Failed to init required jpg and png support!\n");
-		printf("IMG_Init: %s\n", IMG_GetError());
-	}
+	engine->CreateWindow(windowWidth, windowHeight, "SpaceChunks", false);
 
 	bool running = true;
 
@@ -191,18 +113,16 @@ int main(int, char**)
 
 		if (frameCounter >= 1.0)
 		{
-			std::cout << frames << std::endl;
-			framerate = frames;
+			fpsRate = frames;
 			frames = 0;
 			frameCounter = 0;
-
-			
 		}
 
 		while (unprocessedTime > m_frameTime)
 		{
 			render = true;
-			//Update();
+
+			
 
 			while (SDL_PollEvent(&event))
 			{
@@ -243,6 +163,9 @@ int main(int, char**)
 
 		if (render)
 		{
+			if (mousein)
+				SDL_WarpMouseInWindow(engine->GetWindow(), MidX, MidY);
+
 			Render();
 			SDL_GL_SwapWindow(engine->GetWindow());
 			frames++;
@@ -256,7 +179,6 @@ int main(int, char**)
 
 	chunk->DisposeChunk();
 
-	delete shader;
 	delete chunk;
 
 	engine->DestroyWindow();

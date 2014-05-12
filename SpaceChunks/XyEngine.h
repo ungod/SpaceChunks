@@ -18,6 +18,7 @@
 #include "Time.h"
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
+#include <sstream>
 
 #ifdef HAVE_OPENGL
 #include <SDL/SDL_opengl.h>
@@ -32,107 +33,220 @@ static double MidY = windowHeight / 2;
 class XyEngine
 {
 public:
-	XyEngine();
-	~XyEngine();
 
-	int CreateWindow(int, int, char*, bool, int);
-	void DestroyWindow();
-
-	GLint GetShaderUniform(GLuint program, const GLchar *name);
-	void SetShaderUniform(GLint location, GLfloat v_);
-	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1);
-	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2);
-	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2, GLfloat v3);
-
-	void RenderScene();
-	void UpdateScene();
-
-	double GetTime();
-
-	SDL_Window* GetWindow();
-	SDL_Event GetEvent();
-
-	bool IsMouseIn();
-
-	bool Running();
-
-	void ClearScreen(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
-	void ClearScreen(GLbitfield mask);
-	void CreateList(GLuint id);
-	void CallList(GLuint id);
-	void EndList();
-
-	void EnableImmediateMode(GLenum mode);
-	void DisableImmediateMode();
-
-	void ImmediateNormal(GLfloat x, GLfloat y, GLfloat z);
-	void ImmediateVertex(GLfloat x, GLfloat y, GLfloat z);
-
-	void SDL_GL_RenderText(char *text,
-		TTF_Font *font,
-		SDL_Color color,
-		SDL_Rect *location)
+	void Set3D()
 	{
-		SDL_Surface *initial;
-		SDL_Surface *intermediary;
-		SDL_Rect rect;
-		int w, h;
-		GLuint texture;
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(60.0, windowWidth / windowHeight, 0.01, 1000.0);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
 
-		/* Use SDL_TTF to render our text */
-		initial = TTF_RenderText_Blended(font, text, color);
-
-		/* Convert the rendered text to a known format */
-		w = initial->w;
-		h = initial->h;
-
-		intermediary = SDL_CreateRGBSurface(0, w, h, 32,
-			0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
-
-		SDL_BlitSurface(initial, 0, intermediary, 0);
-
-		/* Tell GL about our new texture */
-		glGenTextures(1, &texture);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA,
-			GL_UNSIGNED_BYTE, intermediary->pixels);
-
-		/* GL_NEAREST looks horrible, if scaled... */
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-		/* prepare to render our texture */
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glColor3f(1.0f, 1.0f, 1.0f);
-
-		/* Draw a quad at location */
-		glBegin(GL_QUADS);
-		/* Recall that the origin is in the lower-left corner
-		That is why the TexCoords specify different corners
-		than the Vertex coors seem to. */
-		glTexCoord2f(0.0f, 0.0f);  glVertex2f(location->x, location->y);
-		glTexCoord2f(1.0f, 0.0f);  glVertex2f(location->x + w, location->y);
-		glTexCoord2f(1.0f, 1.0f);  glVertex2f(location->x + w, location->y + h);
-		glTexCoord2f(0.0f, 1.0f);  glVertex2f(location->x, location->y + h);
-		glEnd();
-
-		glFinish();
-
-		location->w = initial->w;
-		location->h = initial->h;
-
-		SDL_FreeSurface(initial);
-		SDL_FreeSurface(intermediary);
-		glDeleteTextures(1, &texture);
+		glEnable(GL_DEPTH_TEST);
 	}
 
-	void RenderText(const TTF_Font *Font, const GLubyte& R, const GLubyte& G, const GLubyte& B,
-		const double& X, const double& Y, const double& Z, const std::string& Text)
+	void Set2D()
+	{
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluOrtho2D(0, windowWidth, windowHeight, 0);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_LIGHTING);
+		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_CULL_FACE);
+	}
+
+	std::string ConvertIntToString(int num)
+	{
+		std::string str;
+		std::ostringstream con;
+
+		con << num;
+
+		str = con.str();
+
+		return str;
+	}
+
+	XyEngine()
+	{
+
+	}
+
+	~XyEngine()
+	{
+		if (m_Window != NULL)
+		{
+			DestroyWindow();
+		}
+	}
+
+	int CreateWindow(int width, int height, char* title, bool OpenGL_4_0_Enabled)
+	{
+		printf("[XYENGINE] XyEngine is Loading... \n");
+
+		if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
+		{
+			printf("[CORE] SDL Failed to Init! \n");
+			return EXIT_FAILURE;
+		}
+
+		if (OpenGL_4_0_Enabled)
+		{
+			//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+			//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+			//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+			printf("[XYENGINE] XyEngine is Running in OpenGL 4.0 Core Profie! \n");
+		}
+		else
+		{
+			printf("[XYENGINE] XyEngine is Running in Legacy Mode (Pre OpenGL 4.0)! \n");
+		}
+
+
+		m_Window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
+
+		if (m_Window == NULL)
+		{
+			SDL_Quit();
+			printf("[CORE] SDL Failed to Create the Window! \n");
+			return EXIT_FAILURE;
+		}
+
+
+		glcontext = SDL_GL_CreateContext(m_Window);
+
+		if (glewInit() != GLEW_OK)
+		{
+			printf("[CORE] GLEW Failed To Init \n");
+			return EXIT_FAILURE;
+		}
+
+		if (TTF_Init() != 0)
+		{
+			printf("[CORE] SDL TTF Failed to Init! \n");
+			return EXIT_FAILURE;
+		}
+
+		if (!IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG))
+		{
+			printf("[CORE] SDL Image Failed to Init! \n");
+			return EXIT_FAILURE;
+		}
+
+		m_running = true;
+		return EXIT_SUCCESS;
+	}
+
+	void DestroyWindow()
+	{
+		printf("[CORE] XyEngine is shutting down... \n");
+		TTF_Quit();
+		IMG_Quit();
+		SDL_GL_DeleteContext(glcontext);
+		SDL_DestroyWindow(m_Window);
+		SDL_Quit();
+	}
+
+	GLint GetShaderUniform(GLuint program, const GLchar *name)
+	{
+		return glGetUniformLocation(program, name);
+	}
+
+	void SetShaderUniform(GLint location, GLfloat v_)
+	{
+		return glUniform1f(location, v_);
+	}
+
+	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1)
+	{
+		return glUniform2f(location, v_, v1);
+	}
+
+	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2)
+	{
+		return glUniform3f(location, v_, v1, v2);
+	}
+
+	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2, GLfloat v3)
+	{
+		return glUniform4f(location, v_, v1, v2, v3);
+	}
+
+	SDL_Window* GetWindow()
+	{
+		return m_Window;
+	}
+
+	SDL_Event GetEvent()
+	{
+		return event;
+	}
+
+	bool IsMouseIn()
+	{
+		return mousein;
+	}
+
+	bool Running()
+	{
+		return m_running;
+	}
+
+	void ClearScreen(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
+	{
+		glClearColor(red, green, blue, alpha);
+	}
+
+	void ClearScreen(GLbitfield mask)
+	{
+		glClear(mask);
+	}
+
+	void CreateList(GLuint id)
+	{
+		glNewList(id, GL_COMPILE);
+	}
+
+	void CallList(GLuint id)
+	{
+		glCallList(id);
+	}
+
+	void EndList()
+	{
+		glEndList();
+	}
+
+	void EnableImmediateMode(GLenum mode)
+	{
+		glBegin(mode);
+	}
+
+	void DisableImmediateMode()
+	{
+		glEnd();
+	}
+
+	void ImmediateNormal(GLfloat x, GLfloat y, GLfloat z)
+	{
+		glNormal3f(x, y, z);
+	}
+
+	void ImmediateVertex(GLfloat x, GLfloat y, GLfloat z)
+	{
+		glVertex3f(x, y, z);
+	}
+
+	void RenderText(const TTF_Font *Font, const double& X, const double& Y, const std::string& Text)
 	{
 		glEnable(GL_TEXTURE_2D);
 		/*Create some variables.*/
-		SDL_Color Color = { R, G, B };
+		SDL_Color Color = { 255, 255, 255 };
 		SDL_Surface *Message = TTF_RenderText_Blended(const_cast<TTF_Font*>(Font), Text.c_str(), Color);
 		unsigned Texture = 0;
 
@@ -148,10 +262,10 @@ public:
 
 		/*Draw this texture on a quad with the given xyz coordinates.*/
 		glBegin(GL_QUADS);
-		glTexCoord2d(0, 0); glVertex3d(X, Y, Z);
-		glTexCoord2d(1, 0); glVertex3d(X + Message->w, Y, Z);
-		glTexCoord2d(1, 1); glVertex3d(X + Message->w, Y + Message->h, Z);
-		glTexCoord2d(0, 1); glVertex3d(X, Y + Message->h, Z);
+		glTexCoord2d(0, 0); glVertex3d(X, Y, 0);
+		glTexCoord2d(1, 0); glVertex3d(X + Message->w, Y, 0);
+		glTexCoord2d(1, 1); glVertex3d(X + Message->w, Y + Message->h, 0);
+		glTexCoord2d(0, 1); glVertex3d(X, Y + Message->h, 0);
 		glEnd();
 
 		/*Clean up.*/

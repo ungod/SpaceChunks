@@ -56,9 +56,6 @@
     <ClCompile Include="Shader.cpp">
       <Filter>Source Files\XyEngine</Filter>
     </ClCompile>
-    <ClCompile Include="XyEngine.cpp">
-      <Filter>Source Files\XyEngine</Filter>
-    </ClCompile>
     <ClCompile Include="Mesh.cpp">
       <Filter>Source Files\XyEngine</Filter>
     </ClCompile>
