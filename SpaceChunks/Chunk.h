@@ -1,30 +1,52 @@
+#ifndef CHUNK_H
+#define CHUNK_H
+
 #include "XyEngine.h"
+#include "Block.h"
+#include "Shader.h"
 
 #define CHUNK_X 16
-#define CHUNK_Y 16
+#define CHUNK_Y 32
 #define CHUNK_Z 16
 
+
+static int m_chunksLoaded;
 class Chunk
 {
 public:
-	Chunk(int x, int y, int z);
+	Chunk(glm::vec3 pos);
 	void CreateChunk();
 	void RebuildChunk();
 	void DisposeChunk();
 	virtual ~Chunk();
 
+	void setChunkRendered(bool value)
+	{
+		this->m_rendered = value;
+	}
+
+	bool isChunkRendered()
+	{
+		return m_rendered;
+	}
+
 	void UpdateChunk();
+	Chunk* GetChunk(int x, int y, int z);
 
-	uint8_t getBlock(int x, int y, int z);
-	void setBlock(int x, int y, int z, uint8_t type);
+	BlockType getBlock(int x, int y, int z);
+	void setBlock(int x, int y, int z, BlockType type);
 
+	
 private:
+	void RenderLines();
+
+	Shader* lineShader;
+
 	bool m_disposed;
 	glm::vec3 m_position;
-	uint8_t m_blocks[CHUNK_X][CHUNK_Y][CHUNK_Z];
+	Block*** m_blocks;
 	bool m_changed;
-
-	GLuint m_vbo;
+	bool m_rendered;
 
 	bool IsBlockInView(int x, int y, int z);
 	bool IsFaceXInView(int x, int y, int z, bool reversed);
@@ -32,14 +54,17 @@ private:
 	bool IsFaceZInView(int x, int y, int z, bool reversed);
 
 	bool showChunkFaces = false;
-	int chunkID;
+	int chunkID, renderLineID, chunkX, chunkY, chunkZ;
+
 	float difamb[4];
 
-	int m_x;
-	int m_y;
-		
-	int m_z;
+	GLint lineColor;
+	GLuint RenderLineArray;
+	GLuint RenderLineElementBuffer;
+	GLuint RenderLineBuffer;
 
 	XyEngine *renderer = new XyEngine();
 };
+
+#endif
 

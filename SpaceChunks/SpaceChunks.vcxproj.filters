@@ -42,10 +42,19 @@
     <ClInclude Include="Player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Time.h">
+    <ClInclude Include="SkyBox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SkyBox.h">
+    <ClInclude Include="Time.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\includes\NOISE\simplexnoise.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="Block.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -69,7 +78,10 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Time.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\XyEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\includes\NOISE\simplexnoise.cpp">
+      <Filter>Source Files\XyEngine</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

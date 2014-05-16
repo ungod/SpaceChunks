@@ -18,7 +18,11 @@
 #include "Time.h"
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
+#include <SDL/SDL_thread.h>
 #include <sstream>
+#include <functional>
+#include <Noise/simplexnoise.h>
+#include <thread>
 
 #ifdef HAVE_OPENGL
 #include <SDL/SDL_opengl.h>
@@ -30,10 +34,36 @@ static double windowHeight = 720;
 static double MidX = windowWidth / 2;
 static double MidY = windowHeight / 2;
 
+extern bool ShowGrid;
+
 class XyEngine
 {
+private:
+	SDL_Window* m_Window;
+	SDL_GLContext glcontext;
+	SDL_Event event;
+	bool m_running;
+	bool mousein;
+
+	float frameRate=60;
+
+	float m_frameTime = 1.0 / frameRate;
+
+	float frames = 0;
+
+	float fpsRate;
+	int seed;
+
+	
+
 public:
 
+	
+
+	int GetSeed()
+	{
+		return seed;
+	}
 	void Set3D()
 	{
 		glMatrixMode(GL_PROJECTION);
@@ -59,6 +89,11 @@ public:
 		glDisable(GL_CULL_FACE);
 	}
 
+	void setFPS(float framerate)
+	{
+		frameRate = framerate;
+	}
+
 	std::string ConvertIntToString(int num)
 	{
 		std::string str;
@@ -73,7 +108,8 @@ public:
 
 	XyEngine()
 	{
-
+		srand(time(NULL));
+		seed = rand() % 100;
 	}
 
 	~XyEngine()
@@ -84,29 +120,19 @@ public:
 		}
 	}
 
-	int CreateWindow(int width, int height, char* title, bool OpenGL_4_0_Enabled)
+	/* Width, Height, Title, Init Function, Render Function */
+	int CreateWindow(int width, int height, char* title, float frameRateIn, void(*initFunc)(), void(*renderFunc)(), void(*inputFunc)(SDL_Event event))
 	{
 		printf("[XYENGINE] XyEngine is Loading... \n");
+
+		frameRate = NULL;
+		setFPS(frameRateIn);
 
 		if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 		{
 			printf("[CORE] SDL Failed to Init! \n");
 			return EXIT_FAILURE;
 		}
-
-		if (OpenGL_4_0_Enabled)
-		{
-			//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-			//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-			//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-			printf("[XYENGINE] XyEngine is Running in OpenGL 4.0 Core Profie! \n");
-		}
-		else
-		{
-			printf("[XYENGINE] XyEngine is Running in Legacy Mode (Pre OpenGL 4.0)! \n");
-		}
-
 
 		m_Window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
 
@@ -139,7 +165,91 @@ public:
 		}
 
 		m_running = true;
+
+		initFunc();
+
+		double lastTime = Time::GetTime();
+		double unprocessedTime = 0;
+		double frameCounter = 0;
+		frames = 0;
+
+		SDL_Event event;
+
+		while (m_running)
+		{
+			bool render = false;
+
+			double startTime = Time::GetTime();
+			double passedTime = startTime - lastTime;
+			lastTime = startTime;
+
+			unprocessedTime += passedTime;
+			frameCounter += passedTime;
+
+			if (frameCounter >= 1.0)
+			{
+				fpsRate = frames;
+				frames = 0;
+				frameCounter = 0;
+			}
+
+			while (unprocessedTime > m_frameTime)
+			{
+				render = true;
+
+				while (SDL_PollEvent(&event))
+				{
+					inputFunc(event);
+
+					switch (event.type)
+					{
+
+					case SDL_QUIT:
+						m_running = false;
+						break;
+
+					case SDL_MOUSEBUTTONDOWN:
+						mousein = true;
+						SDL_ShowCursor(SDL_DISABLE);
+						break;
+
+					case SDL_KEYDOWN:
+						switch (event.key.keysym.sym)
+						{
+						case SDLK_ESCAPE:
+							mousein = false;
+							SDL_ShowCursor(SDL_ENABLE);
+							break;
+						}
+					}
+				}
+
+				unprocessedTime -= m_frameTime;
+			}
+
+			if (render)
+			{
+				if (mousein)
+					SDL_WarpMouseInWindow(m_Window, (int)MidX, (int)MidY);
+
+				//Render();
+				renderFunc();
+				SDL_GL_SwapWindow(m_Window);
+				frames++;
+			}
+			else
+			{
+				SDL_Delay(1);
+			}
+		}
+
+
 		return EXIT_SUCCESS;
+	}
+
+	float GetFPS()
+	{
+		return fpsRate;
 	}
 
 	void DestroyWindow()
@@ -242,6 +352,7 @@ public:
 		glVertex3f(x, y, z);
 	}
 
+	
 	void RenderText(const TTF_Font *Font, const double& X, const double& Y, const std::string& Text)
 	{
 		glEnable(GL_TEXTURE_2D);
@@ -294,13 +405,5 @@ public:
 		}
 		return NULL;
 	}
-
-private:
-	SDL_Window* m_Window;
-	SDL_GLContext glcontext;
-	SDL_Event event;
-	bool m_running;
-	bool mousein;
 };
 #endif
-

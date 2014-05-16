@@ -1,188 +1,154 @@
 #include "Game.h"
-
 #include "Player.h"
 #include "Chunk.h"
-#include <sstream>
-bool chunkRen = false;
+#include "WorldManager.h"
 
-Chunk* chunk;
-Player player(glm::vec3(5, 17, 5), 0, 180);
+bool ShowGrid = false;
 
-float frameRate = 60;
+SDL_Thread *createWorldThread;
 
-float m_frameTime = 1.0 / frameRate;
-
-bool mousein = false;
-
+Player player(glm::vec3(132, 20, 132), 0, 180);
 TTF_Font *font;
 
-int frames = 0;
+WorldManager world;
 
-int fpsRate;
+std::string spaceChunkLog = "Log...";
+
+int         threadReturnValue = 0;
+
+void Log(std::string log)
+{
+	spaceChunkLog = " ";
+	spaceChunkLog.append(log);
+}
 
 void Init()
 {
-	chunk = new Chunk(0, 0, 0);
-
-	font = TTF_OpenFont("fonts/font.ttf", 18);
+	font = TTF_OpenFont("fonts/arial.ttf", 14);
 	glClearColor(0.12f, 0.56f, 1.0f, 1.0f);
+
+	//createWorldThread = SDL_CreateThread(CreateWorld, "World Thread", (void *)NULL);
 
 	glViewport(0, 0, windowWidth, windowHeight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(60.0, windowWidth / windowHeight, 0.01, 1000.0);
+	gluPerspective(70.0, windowWidth / windowHeight, 0.01, 1000.0);
 	glMatrixMode(GL_MODELVIEW);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_LIGHTING);
 	glEnable(GL_CULL_FACE);
 	glShadeModel(GL_SMOOTH);
 	glEnable(GL_LIGHT0);
-	const GLfloat DiffuseLight[] = { 0.5f, 0.5f, 0.5f, 0.5f };
-	const GLfloat AmbientLight[] = { 0.5f, 0.5f, 0.5f, 0.5f };
-	const GLfloat SpecularLight[] = { 0.5f, 0.5f, 0.5f, 0.5f };
-	const GLfloat PositonLight[] = { 0.4, -1.0, 0.4, 0.4 };
-	
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, DiffuseLight);
+	const GLfloat AmbientLight[] = { 0.5, 0.5, 0.5, 1.0 };	
 	glLightfv(GL_LIGHT0, GL_AMBIENT, AmbientLight);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, SpecularLight);
-	glLightfv(GL_LIGHT0, GL_POSITION, PositonLight);
-
+	
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+	
+
 	player.Init();
 
-	chunk->CreateChunk();
+	world.CreateWorld();
+
+	spaceChunkLog = "SpaceChunks Has Loaded...";
 }
 
+void Input(SDL_Event event)
+{
+	switch (event.type)
+	{
+	case SDL_KEYDOWN:
+		switch (event.key.keysym.sym)
+		{
+			case SDLK_l:
+			{
+				player.SetPosition(glm::vec3(0, 20, 0), player.getPitch(), player.getYaw());
+				Log("[Player Name] Teleported To: X: " + engine->ConvertIntToString(0) + " Y: " + engine->ConvertIntToString(20) + " Z: " + engine->ConvertIntToString(0));
+			}	
+			break;
+
+			case SDLK_q:
+			{
+				Chunk* tmpChk = world.getChunkInWorld((int)player.GetPos().x, (int)player.GetPos().y, (int)player.GetPos().z);
+
+				if (tmpChk != NULL)
+					tmpChk->setBlock((int)player.GetPos().x, (int)player.GetPos().y, (int)player.GetPos().z, BlockType_Dirt);
+			}
+			break;
+
+			case SDLK_g:
+			{
+				ShowGrid = !ShowGrid;
+			}	
+			break;
+
+			case SDLK_r:
+			{
+				Chunk* tmpChk1 = world.getChunkInWorld((int)player.GetPos().x, (int)player.GetPos().y, (int)player.GetPos().z);
+
+				if (tmpChk1 != NULL)
+				{
+					if (tmpChk1->isChunkRendered())
+						tmpChk1->setChunkRendered(false);
+					else
+						tmpChk1->setChunkRendered(true);
+				}
+				else
+				{
+					Log("Chunk Not Here!");
+				}
+				break;
+			}
+				
+		}
+		break;
+	}
+}
+ 
 void Render()
 {
-	/* New Render System (Upgrading) */
-
 	engine->ClearScreen(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	engine->Set3D();
-		player.Update(mousein);
-		chunk->UpdateChunk();
+	
+		player.Update(engine->IsMouseIn());
+		const GLfloat PositonLight[] = { 0.5, 0.0, -0.5, 0 };
+		glLightfv(GL_LIGHT0, GL_POSITION, PositonLight);
+		world.Update();
 
 	engine->Set2D();
 		engine->RenderText(font, 5, 0, "Space Chunks Alpha 0.2");
 		engine->RenderText(font, 5, 20, "(C) 2014 Dominic Maas");
-		engine->RenderText(font, 5, 40, "FPS: " + engine->ConvertIntToString(fpsRate));
+		engine->RenderText(font, 5, 40, "FPS: " + engine->ConvertIntToString(engine->GetFPS()));
 
-		engine->RenderText(font, 5, 80, "Chunk Updates: 0");
-		engine->RenderText(font, 5, 100, "Chunk Rendered: 1");
+		engine->RenderText(font, 5, 70, "Chunk Updates: 0");
+		engine->RenderText(font, 5, 90, "Chunk Rendered: " + engine->ConvertIntToString(m_chunksLoaded));
 
-		glm::vec3 playerPos = player.GetPos();
-
-		std::string playerPosStr = " X: " + engine->ConvertIntToString((int)playerPos.x) + " Y: " + engine->ConvertIntToString((int)playerPos.y) + " Z: " + engine->ConvertIntToString((int)playerPos.z);
-		engine->RenderText(font, 5, windowHeight - 45, "Player Position: " + playerPosStr);
+		std::string playerPosStr = " X: " + engine->ConvertIntToString((int)player.GetPos().x) + " Y: " + engine->ConvertIntToString((int)player.GetPos().y) + " Z: " + engine->ConvertIntToString((int)player.GetPos().z);
+		engine->RenderText(font, 5, 110, "Player Position: " + playerPosStr);
 
 		std::string playerRotStr = " Pitch: " + engine->ConvertIntToString((int)player.getPitch()) + " Yaw: " + engine->ConvertIntToString((int)player.getYaw());
+		engine->RenderText(font, 5, 130, "Player Rotation: " + playerRotStr);
 
-		engine->RenderText(font, 5, windowHeight - 25, "Player Rotation: " + playerRotStr);
+		engine->RenderText(font, 5, 150, "Seed: " + engine->ConvertIntToString(engine->GetSeed()));
+
+		engine->RenderText(font, 5, windowHeight - 25, spaceChunkLog);
+
+		engine->RenderText(font, windowWidth - 200, windowHeight - 25, "G - Show Chunk Grid");
+		engine->RenderText(font, windowWidth - 200, windowHeight - 45, "R - Render Chunk 0, 0, 0");
+		engine->RenderText(font, windowWidth - 200, windowHeight - 65, "L - TP To Chunk 0, 0, 0");
+		engine->RenderText(font, windowWidth - 200, windowHeight - 85, "Q - Set Blocks at Your Position");
 }
 
 int main(int, char**)
 {
-	engine->CreateWindow(windowWidth, windowHeight, "SpaceChunks", false);
+	engine->CreateWindow(windowWidth, windowHeight, "SpaceChunks", 30, Init, Render, Input);
 
-	bool running = true;
-
-	double lastTime = Time::GetTime();
-	double unprocessedTime = 0;
-	double frameCounter = 0;
-	frames = 0;
-
-	SDL_Event event;
-
-	Init();
-
-	while (running)
-	{
-		bool render = false;
-
-		double startTime = Time::GetTime();
-		double passedTime = startTime - lastTime;
-		lastTime = startTime;
-
-		unprocessedTime += passedTime;
-		frameCounter += passedTime;
-
-		if (frameCounter >= 1.0)
-		{
-			fpsRate = frames;
-			frames = 0;
-			frameCounter = 0;
-		}
-
-		while (unprocessedTime > m_frameTime)
-		{
-			render = true;
-
-			
-
-			while (SDL_PollEvent(&event))
-			{
-				switch (event.type)
-				{
-
-				case SDL_QUIT:
-					running = false;
-					break;
-
-				case SDL_MOUSEBUTTONDOWN:
-					mousein = true;
-					SDL_ShowCursor(SDL_DISABLE);
-					break;
-
-				case SDL_KEYDOWN:
-					switch (event.key.keysym.sym)
-					{
-					case SDLK_ESCAPE:
-						mousein = false;
-						SDL_ShowCursor(SDL_ENABLE);
-						break;
-					case SDLK_0:
-						chunk->setBlock(0, 0, 0, 0);
-						break;
-					case SDLK_1:
-						chunk->setBlock(0, 0, 0, 1);
-						break;
-					case SDLK_m:
-						chunkRen = !chunkRen;
-						break;
-					}
-				}
-			}
-
-			unprocessedTime -= m_frameTime;
-		}
-
-		if (render)
-		{
-			if (mousein)
-				SDL_WarpMouseInWindow(engine->GetWindow(), MidX, MidY);
-
-			Render();
-			SDL_GL_SwapWindow(engine->GetWindow());
-			frames++;
-		}
-		else
-		{
-			SDL_Delay(1);
-		}
-	}
-
-
-	chunk->DisposeChunk();
-
-	delete chunk;
-
+	world.DisposeWorld();
 	engine->DestroyWindow();
 
 	return 0;
 }
-
