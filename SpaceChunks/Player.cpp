@@ -1,6 +1,5 @@
 #include "Player.h"
 #include "Camera.h"
-#include "SkyBox.h"
 
 Player::Player(glm::vec3 pos, float pitch, float yaw)
 {
@@ -15,7 +14,7 @@ Player::Player(glm::vec3 pos, float pitch, float yaw)
 
 void Player::Init()
 {
-	initskybox(100.0f);
+	//initskybox(100.0f);
 }
 
 void Player::SetPosition(glm::vec3 pos, float pitch, float yaw)
@@ -50,11 +49,11 @@ void Player::Update(bool mousein)
 	setCamZ(m_pos.z);
 
 	Control(0.3, 0.05, mousein);
-	drawSkybox();
+	//drawSkybox();
 	UpdateCamera();
 }
 
 Player::~Player()
 {
-	killskybox();
+
 }

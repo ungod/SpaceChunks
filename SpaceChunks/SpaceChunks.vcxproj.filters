@@ -42,9 +42,6 @@
     <ClInclude Include="Player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SkyBox.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Time.h">
       <Filter>Header Files\XyEngine</Filter>
     </ClInclude>
@@ -82,6 +79,9 @@
     </ClCompile>
     <ClCompile Include="..\includes\NOISE\simplexnoise.cpp">
       <Filter>Source Files\XyEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldManager.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

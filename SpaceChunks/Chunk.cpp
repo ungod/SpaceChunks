@@ -1,81 +1,12 @@
 #include "Chunk.h"
 
-unsigned int tex;
-
 int seed;
 
-
-
-
-Chunk::Chunk(glm::vec3 pos)
-{
-	m_position = pos;
-
-	chunkX = m_position.x + CHUNK_X;
-	chunkY = m_position.y + CHUNK_Y;
-	chunkZ = m_position.z + CHUNK_Z;
-
-	lineShader = new Shader("shaders/lineShader");
-	tex = renderer->LoadTexture("img/dirt.jpg");
-	GLfloat renderLineVBOData[] = { m_position.x, 0, m_position.z,
-									m_position.x, chunkY, m_position.z,
-	
-									m_position.x, 0, m_position.z,
-									chunkX, 0, m_position.z,
-
-									m_position.x, chunkY, m_position.z,
-									chunkX, chunkY, m_position.z,
-
-									m_position.x, 0, chunkZ,
-									chunkX, 0, chunkZ,
-
-									m_position.x, chunkY, chunkZ,
-									chunkX, chunkY, chunkZ,
-
-									m_position.x, chunkY, m_position.z,
-									m_position.x, chunkY, chunkZ,
-
-									m_position.x, 0, m_position.z,
-									m_position.x, 0, chunkZ
-	};
-
-	glGenVertexArrays(1, &RenderLineArray);
-	glBindVertexArray(RenderLineArray);
-
-	glGenBuffers(1, &RenderLineBuffer);
-
-	glBindBuffer(GL_ARRAY_BUFFER, RenderLineBuffer);
-
-	glBufferData(GL_ARRAY_BUFFER, sizeof(renderLineVBOData), renderLineVBOData, GL_STATIC_DRAW);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-	glBindVertexArray(0);
-
-	/* Old Stuff */
-	chunkID = glGenLists(1);
-
-	m_disposed = false;
-	
-	m_blocks = new Block**[chunkX];
-
-	for (int i = m_position.x; i < chunkX; i++)
-	{
-		m_blocks[i] = new Block*[chunkY];
-
-		for (int j = m_position.y; j < chunkY; j++)
-		{
-			m_blocks[i][j] = new Block[chunkZ];
-		}
-	}
-
-	m_changed = true;
-	m_rendered = true;
-}
+GLuint cs;
 
 float CalculateNoiseValue(glm::vec3 pos, glm::vec3 offset, float scale)
 {
+
 	float noiseX = abs((pos.x + offset.x) * scale);
 	float noiseY = abs((pos.y + offset.y) * scale);
 	float noiseZ = abs((pos.z + offset.z) * scale);
@@ -83,209 +14,216 @@ float CalculateNoiseValue(glm::vec3 pos, glm::vec3 offset, float scale)
 	return raw_noise_3d(noiseX, noiseY, noiseZ);
 }
 
-void Chunk::CreateChunk()
+Chunk::Chunk(glm::vec3 pos, int id)
 {
-	seed = renderer->GetSeed();
+	m_position = pos;
+	m_id = id;
 
-	m_chunksLoaded++;
+	memset(m_blocks, 0, sizeof m_blocks);
+	m_rendered = true;
+	m_disposed = false;
+	m_changed = true;
+	m_list = glGenLists(1);
+
+	seed = renderer->GetSeed();
 
 	glm::vec3 grain0Offset(seed * 10000, seed * 10000, seed * 10000);
 	glm::vec3 grain1Offset(seed * 10000, seed * 10000, seed * 10000);
 	glm::vec3 grain2Offset(seed * 10000, seed * 10000, seed * 10000);
 
-	for (int x = m_position.x; x < chunkX; x++)
+	for (int x = 0; x < CHUNK_X; x++)
 	{
-		for (int y = m_position.y; y < chunkY; y++)
+		for (int y = 0; y < CHUNK_Y; y++)
 		{
-			for (int z = m_position.z; z < chunkZ; z++)
-			{			
-				glm::vec3 pos(x, y, z);
+			for (int z = 0; z < CHUNK_Z; z++)
+			{
+				glm::vec3 pos(x + m_position.x, y + m_position.y, z + m_position.z);
 
-				float mountainValue = CalculateNoiseValue(pos, grain2Offset, 0.012f);
-				mountainValue -= ((float)y / 14);
+				float mountainValue = CalculateNoiseValue(pos, grain2Offset, 0.017f);
+				mountainValue -= ((float)y / 28);
 
-				float noiseValue = CalculateNoiseValue(pos, grain0Offset, 0.03f);
+				float noiseValue = CalculateNoiseValue(pos, grain0Offset, 0.07f);
 
-				noiseValue -= ((float)y / 9);
-				noiseValue = std::max(noiseValue, CalculateNoiseValue(pos, grain1Offset, 0.01f));
-				noiseValue -= ((float)y / 7);
+				noiseValue -= ((float)y / 16);
+				noiseValue = std::max(noiseValue, CalculateNoiseValue(pos, grain1Offset, 0.04f));
+				noiseValue -= ((float)y / 14);
 
 
 				noiseValue -= mountainValue;
+				noiseValue += (12 - (float)y) / 12;
 
-				noiseValue += (6 - (float)y) / 6;
-
-				if (noiseValue > 0)
-				{				
-					m_blocks[x][y][z].setBlockType(BlockType_Dirt);
-					m_blocks[x][y][z].setActive(true);
+				
+				
+				if (y < 6)
+				{
+					m_blocks[x][y][z] = Block::BLOCK_WATER;
+				}
+				else if (noiseValue > 0)
+				{
+					if (y < 8 && m_blocks[x][y][z] != Block::BLOCK_WATER)
+					{
+						m_blocks[x][y][z] = Block::BLOCK_SAND;
+					}
+					else
+					{
+						m_blocks[x][y][z] = Block::BLOCK_GRASS;
+					}
 				}
 				else
 				{
-					m_blocks[x][y][z].setBlockType(BlockType_Air);
-					m_blocks[x][y][z].setActive(false);
+					//m_blocks[x][y][z].setBlockType(BlockType_Air);
 				}
+				
 			}
 		}
 	}
+
+	
+
 }
 
-GLfloat AmbientLight[] = { 0.8, 0.8, 0.8, 0.8 };
+void Chunk::InitGLCode()
+{
+	renderer->LoadShaderProgram(cs, "shaders/chunkShader");
+}
 
 void Chunk::RebuildChunk()
 {
-	glNewList(chunkID, GL_COMPILE);
+	m_changed = false;
 
-	glEnable(GL_TEXTURE_2D);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-	
+	glNewList(m_list, GL_COMPILE);
+	glBegin(GL_TRIANGLES);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	glBegin(GL_QUADS);
-	for (int x = m_position.x; x < chunkX; x++)
+	for (int x = 0; x < CHUNK_X; x++)
 	{
-		for (int y = m_position.y; y < chunkY; y++)
+		for (int y = 0; y < CHUNK_Y; y++)
 		{
-			for (int z = m_position.z; z < chunkZ; z++)
+			for (int z = 0; z < CHUNK_Z; z++)
 			{
-				if (!IsBlockInView(x, y, z) && m_blocks[x][y][z].getBlockType() != BlockType_Air && m_blocks[x][y][z].isActive())
+				if (!m_blocks[x][y][z])
+					continue;
+
+				if (!IsFaceXInView(x, y, z, true))
 				{
-					glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, AmbientLight);
+					glVertex3f(x, y, z);
+					glVertex3f(x, y, z + 1);
+					glVertex3f(x, y + 1, z);
 
-					//Front Face
-					if (!IsFaceZInView(x, y, z, false))
-					{
-						renderer->ImmediateNormal(0.0f, 0.0f, -1.0f);
-						glTexCoord2f(1, 0);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y, (GLfloat)z);
-						glTexCoord2f(0, 0);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y, (GLfloat)z);
-						glTexCoord2f(0, 1);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y + 1, (GLfloat)z);
-						glTexCoord2f(1, 1);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y + 1, (GLfloat)z);
-					}
+					glVertex3f(x, y + 1, z);
+					glVertex3f(x, y, z + 1);
+					glVertex3f(x, y + 1, z + 1);
+				}
 
-					// Back Face
-					if (!IsFaceZInView(x, y, z, true))
-					{
-						renderer->ImmediateNormal(0.0f, 0.0f, 1.0f);
-						glTexCoord2f(0, 0);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y, (GLfloat)z + 1);
-						glTexCoord2f(1, 0);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y, (GLfloat)z + 1);
-						glTexCoord2f(1, 1);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y + 1, (GLfloat)z + 1);
-						glTexCoord2f(0, 1);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y + 1, (GLfloat)z + 1);
-					}
+				if (!IsFaceXInView(x, y, z, false))
+				{
+					glVertex3f(x + 1, y, z);
+					glVertex3f(x + 1, y + 1, z);
+					glVertex3f(x + 1, y, z + 1);
 
-					// Left Face
-					if (!IsFaceXInView(x, y, z, true))
-					{
-						renderer->ImmediateNormal(1.0f, 0.0f, 0.0f);
-						glTexCoord2f(0, 0);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y, (GLfloat)z + 1);
-						glTexCoord2f(1, 0);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y, (GLfloat)z);
-						glTexCoord2f(1, 1);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y + 1, (GLfloat)z);
-						glTexCoord2f(0, 1);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y + 1, (GLfloat)z + 1);
-					}
+					glVertex3f(x + 1, y + 1, z);
+					glVertex3f(x + 1, y + 1, z + 1);
+					glVertex3f(x + 1, y, z + 1);
+				}
+			
+				if (!IsFaceZInView(x, y, z, false))
+				{
+					glVertex3f(x, y, z + 1);
+					glVertex3f(x + 1, y, z + 1);
+					glVertex3f(x, y + 1, z + 1);
+					glVertex3f(x, y + 1, z + 1);
+					glVertex3f(x + 1, y, z + 1);
+					glVertex3f(x + 1, y + 1, z + 1);
 
-					// Right Face
-					if (!IsFaceXInView(x, y, z, false))
-					{
-						renderer->ImmediateNormal(-1.0f, 0.0f, 0.0f);
-						glTexCoord2f(0, 0);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y, (GLfloat)z);
-						glTexCoord2f(1, 0);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y, (GLfloat)z + 1);
-						glTexCoord2f(1, 1);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y + 1, (GLfloat)z + 1);
-						glTexCoord2f(0, 1);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y + 1, (GLfloat)z);
-					}
+				}
 
-					// Bottom Face
-					if (!IsFaceYInView(x, y, z, false))
-					{
-						renderer->ImmediateNormal(0.0f, -1.0f, 0.0f);
-						glTexCoord2f(1, 1);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y, (GLfloat)z);
-						glTexCoord2f(0, 1);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y, (GLfloat)z);
-						glTexCoord2f(0, 0);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y, (GLfloat)z + 1);
-						glTexCoord2f(1, 0);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y, (GLfloat)z + 1);
-					}
+				if (!IsFaceZInView(x, y, z, true))
+				{
+					glVertex3f(x, y, z + 1);
+					glVertex3f(x + 1, y, z + 1);
+					glVertex3f(x, y + 1, z + 1);
+					glVertex3f(x, y + 1, z + 1);
+					glVertex3f(x + 1, y, z + 1);
+					glVertex3f(x + 1, y + 1, z + 1);
+				}
 
-					// Top Face
-					if (!IsFaceYInView(x, y, z, true))
-					{
-						renderer->ImmediateNormal(0.0f, 1.0f, 0.0f);
-						glTexCoord2f(1, 0);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y + 1, (GLfloat)z);
-						glTexCoord2f(0, 0);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y + 1, (GLfloat)z);
-						glTexCoord2f(0, 1);
-						renderer->ImmediateVertex((GLfloat)x, (GLfloat)y + 1, (GLfloat)z + 1);
-						glTexCoord2f(1, 1);
-						renderer->ImmediateVertex((GLfloat)x + 1, (GLfloat)y + 1, (GLfloat)z + 1);
-					}
-				}		
+				
+				if (!IsFaceYInView(x, y, z, false))
+				{
+					glVertex3f(x, y, z);
+					glVertex3f(x + 1, y, z);
+					glVertex3f(x, y, z + 1);
+					glVertex3f(x + 1, y, z);
+					glVertex3f(x + 1, y, z + 1);
+					glVertex3f(x, y, z + 1);
+				}
+
+				if (!IsFaceYInView(x, y, z, true))
+				{
+					glVertex3f(x, y + 1, z);
+					glVertex3f(x, y + 1, z + 1);
+					glVertex3f(x + 1, y + 1, z);
+					glVertex3f(x + 1, y + 1, z);
+					glVertex3f(x, y + 1, z + 1);
+					glVertex3f(x + 1, y + 1, z + 1);
+				}
+				
 			}
 		}
 	}
-	
-	glEnd();	
+
+	glEnd();
 	glEndList();
 }
 
-void Chunk::UpdateChunk()
-{
-	glEnable(GL_DEPTH_TEST);
 
-	if (m_changed)
-	{		
+void Chunk::RenderChunk()
+{		
+	float x = m_position.x;
+	float y = m_position.y;
+	float z = m_position.z;
+
+	if(m_changed)
 		RebuildChunk();
-		m_changed = false;
-	}
 
 	if (m_rendered)
 	{
-		glBindTexture(GL_TEXTURE_2D, tex);
-		glCallList(chunkID);
+		glPushMatrix();
+		renderer->TranslateWorldMatrix(x, y, z);
+			
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+
+		glCallList(m_list);
+
+		glPopMatrix();		
 	}
-		
-	if (ShowGrid)
-	{
-		glDisable(GL_TEXTURE_2D);
+}
 
-		lineShader->Bind();
+void Chunk::DisposeChunk()
+{
+	m_disposed = true;
+	delete renderer;
 
-		glBindVertexArray(RenderLineArray);
-		glDrawArrays(GL_LINES, 0, 14);
+	glDeleteLists(m_list, 1);
 
-		lineShader->UnBind();
-
-		glEnable(GL_TEXTURE_2D);
-	}
+	renderer->DisposeShader(chunkShader);
 }
 
 Chunk* Chunk::GetChunk(int x, int y, int z)
 {
 	bool chunkCheck[6];
 
+	float tx = m_position.x;
+	float ty = m_position.y;
+	float tz = m_position.z;
+
+	float cx = CHUNK_X + tx;
+	float cy = CHUNK_Y + ty;
+	float cz = CHUNK_Z + tz;
+
 	/*------------------------------*/
 
-	if (x >= m_position.x) // x greater than 0
+	if (x >= tx) // x greater than 0
 	{
 		chunkCheck[0] = true;
 	}
@@ -294,7 +232,7 @@ Chunk* Chunk::GetChunk(int x, int y, int z)
 		chunkCheck[0] = false;
 	}
 
-	if (x <= chunkX)  // x less that 16
+	if (x <= cx)  // x less that 16
 	{
 		chunkCheck[1] = true;
 	}
@@ -304,7 +242,7 @@ Chunk* Chunk::GetChunk(int x, int y, int z)
 
 	/*------------------------------*/
 
-	if (y >= m_position.y)
+	if (y >= ty)
 	{
 		chunkCheck[2] = true;
 	}
@@ -313,7 +251,7 @@ Chunk* Chunk::GetChunk(int x, int y, int z)
 		chunkCheck[2] = false;
 	}
 
-	if (y <= chunkY)
+	if (y <= cy)
 	{
 		chunkCheck[3] = true;
 	}
@@ -323,7 +261,7 @@ Chunk* Chunk::GetChunk(int x, int y, int z)
 
 	/*------------------------------*/
 
-	if (z >= m_position.z)
+	if (z >= tz)
 	{
 		chunkCheck[4] = true;
 	}
@@ -332,7 +270,7 @@ Chunk* Chunk::GetChunk(int x, int y, int z)
 		chunkCheck[4] = false;
 	}
 
-	if (z <= chunkZ)
+	if (z <= cz)
 	{
 		chunkCheck[5] = true;
 	}
@@ -342,43 +280,22 @@ Chunk* Chunk::GetChunk(int x, int y, int z)
 
 	if (chunkCheck[0] && chunkCheck[1] && chunkCheck[2] && chunkCheck[3] && chunkCheck[4] && chunkCheck[5])
 	{
+		printf("FoundChunk");
 		return this;
 	}
 	return NULL;
 }
 
-void Chunk::DisposeChunk()
+
+
+uint8_t Chunk::getBlock(int x, int y, int z)
 {
-	m_disposed = true;
-	
-	glDeleteVertexArrays(1, &RenderLineArray);
-
-	delete renderer;
-
-	glDeleteLists(chunkID, 1);
-
-	for (int i = m_position.x; i < chunkX; i++)
-	{
-		for (int j = m_position.y; j < chunkY; j++)
-		{
-			delete[] m_blocks[i][j];
-		}
-
-		delete[] m_blocks[i];
-	}
-
-	delete[] m_blocks;
+	return m_blocks[x][y][z];
 }
 
-BlockType Chunk::getBlock(int x, int y, int z)
+void Chunk::setBlock(int x, int y, int z, uint8_t type)
 {
-	return m_blocks[x][y][z].getBlockType();
-}
-
-void Chunk::setBlock(int x, int y, int z, BlockType type)
-{
-	m_blocks[x][y][z].setBlockType(type);
-	m_blocks[x][y][z].setActive(true);
+	m_blocks[x][y][z] = type;
 	m_changed = true;
 }
 
@@ -391,74 +308,16 @@ Chunk::~Chunk()
 }
 
 /*
-IsBlockInView checks blocks around it, if all blocks around it are not air blocks, it will not render the block
-*/
-bool Chunk::IsBlockInView(int x, int y, int z)
-{
-	bool facesHidden[6];
-
-	if (x > m_position.x) {
-		if (!m_blocks[x - 1][y][z].getBlockType() == BlockType_Air) facesHidden[0] = true;
-		else facesHidden[0] = false;
-	}
-	else {
-		facesHidden[0] = false;
-	}
-
-	if (x < chunkX - 1) {
-		if (!m_blocks[x + 1][y][z].getBlockType() == BlockType_Air) facesHidden[1] = true;
-		else facesHidden[1] = false;
-	}
-	else {
-		facesHidden[1] = false;
-	}
-
-	if (y > m_position.y) {
-		if (!m_blocks[x][y - 1][z].getBlockType() == BlockType_Air) facesHidden[2] = true;
-		else facesHidden[2] = false;
-	}
-	else {
-		facesHidden[2] = false;
-	}
-
-	if (y < chunkY - 1) {
-		if (!m_blocks[x][y + 1][z].getBlockType() == BlockType_Air) facesHidden[3] = true;
-		else facesHidden[3] = false;
-	}
-	else {
-		facesHidden[3] = false;
-	}
-
-	if (z > m_position.z) {
-		if (!m_blocks[x][y][z - 1].getBlockType() == BlockType_Air) facesHidden[4] = true;
-		else facesHidden[4] = false;
-	}
-	else {
-		facesHidden[4] = false;
-	}
-
-	if (z < chunkZ - 1) {
-		if (!m_blocks[x][y][z + 1].getBlockType() == BlockType_Air) facesHidden[5] = true;
-		else facesHidden[5] = false;
-	}
-	else {
-		facesHidden[5] = false;
-	}
-	return facesHidden[0] && facesHidden[1] && facesHidden[2] && facesHidden[3] && facesHidden[4] && facesHidden[5];
-}
-
-/*
 IsFaceInView checks blocks around it, if all blocks around it are not air blocks, it will not render the block
 */
 bool Chunk::IsFaceYInView(int x, int y, int z, bool reversed)
 {
 	bool faceHidden;
 
-
 	if (reversed == false)
 	{
-		if (y > m_position.y) {
-			if (m_blocks[x][y - 1][z].getBlockType() == BlockType_Air) faceHidden = false;
+		if (y > 0) {
+			if (m_blocks[x][y - 1][z] == 0) faceHidden = false;
 			else faceHidden = true;
 		}
 		else {
@@ -467,8 +326,8 @@ bool Chunk::IsFaceYInView(int x, int y, int z, bool reversed)
 		return faceHidden;
 	}
 	else {
-		if (y < chunkY - 1) {
-			if (m_blocks[x][y + 1][z].getBlockType() == BlockType_Air) faceHidden = false;
+		if (y < CHUNK_Y - 1) {
+			if (m_blocks[x][y + 1][z] == 0) faceHidden = false;
 			else faceHidden = true;
 		}
 		else {
@@ -484,8 +343,8 @@ bool Chunk::IsFaceXInView(int x, int y, int z, bool reversed)
 
 	if (reversed == false)
 	{
-		if (x > m_position.x) {
-			if (m_blocks[x - 1][y][z].getBlockType() == BlockType_Air) faceHidden = false;
+		if (x > 0) {
+			if (m_blocks[x - 1][y][z] == 0) faceHidden = false;
 			else faceHidden = true;
 		}
 		else {
@@ -494,8 +353,8 @@ bool Chunk::IsFaceXInView(int x, int y, int z, bool reversed)
 		return faceHidden;
 	}
 	else {
-		if (x < chunkX - 1) {
-			if (m_blocks[x + 1][y][z].getBlockType() == BlockType_Air) faceHidden = false;
+		if (x < CHUNK_X - 1) {
+			if (m_blocks[x + 1][y][z] == 0) faceHidden = false;
 			else faceHidden = true;
 		}
 		else {
@@ -511,8 +370,8 @@ bool Chunk::IsFaceZInView(int x, int y, int z, bool reversed)
 
 	if (reversed == false)
 	{
-		if (z > m_position.z) {
-			if (m_blocks[x][y][z - 1].getBlockType() == BlockType_Air) faceHidden = false;
+		if (z > 0) {
+			if (m_blocks[x][y][z - 1] == 0) faceHidden = false;
 			else faceHidden = true;
 		}
 		else {
@@ -521,8 +380,8 @@ bool Chunk::IsFaceZInView(int x, int y, int z, bool reversed)
 		return faceHidden;
 	}
 	else {
-		if (z < chunkZ - 1) {
-			if (m_blocks[x][y][z + 1].getBlockType() == BlockType_Air) faceHidden = false;
+		if (z < CHUNK_Z - 1) {
+			if (m_blocks[x][y][z + 1] == 0) faceHidden = false;
 			else faceHidden = true;
 		}
 		else {

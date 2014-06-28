@@ -3,6 +3,8 @@
 
 #include <GL/glew.h>
 #include <SDL/SDL.h>
+#include <GLM/gtc/matrix_transform.hpp>
+#include <GLM/gtc/type_ptr.hpp>
 #include <GLM/glm.hpp>
 
 #include <stdlib.h>
@@ -24,10 +26,6 @@
 #include <Noise/simplexnoise.h>
 #include <thread>
 
-#ifdef HAVE_OPENGL
-#include <SDL/SDL_opengl.h>
-#endif
-
 static double windowWidth = 1280;
 static double windowHeight = 720;
 
@@ -45,7 +43,7 @@ private:
 	bool m_running;
 	bool mousein;
 
-	float frameRate=60;
+	float frameRate=500;
 
 	float m_frameTime = 1.0 / frameRate;
 
@@ -54,10 +52,154 @@ private:
 	float fpsRate;
 	int seed;
 
-	
+	static const unsigned int NUM_SHADERS = 2;
+
+	std::string LoadShader(const std::string& fileName)
+	{
+		std::ifstream file;
+		file.open((fileName).c_str());
+
+		std::string output;
+		std::string line;
+
+		if (file.is_open())
+		{
+			while (file.good())
+			{
+				getline(file, line);
+				output.append(line + "\n");
+			}
+		}
+		else
+		{
+			std::cerr << "Unable to load shader: " << fileName << std::endl;
+		}
+
+		return output;
+	}
+
+	void CheckShaderError(GLuint shader, GLuint flag, bool isProgram, const std::string& errorMessage)
+	{
+		GLint success = 0;
+		GLchar error[1024] = { 0 };
+
+		if (isProgram)
+			glGetProgramiv(shader, flag, &success);
+		else
+			glGetShaderiv(shader, flag, &success);
+
+		if (success == GL_FALSE)
+		{
+			if (isProgram)
+				glGetProgramInfoLog(shader, sizeof(error), NULL, error);
+			else
+				glGetShaderInfoLog(shader, sizeof(error), NULL, error);
+
+			std::cerr << errorMessage << ": '" << error << "'" << std::endl;
+		}
+	}
+	GLuint CreateShader(const std::string& text, unsigned int type)
+	{
+		GLuint shader = glCreateShader(type);
+
+		if (shader == 0)
+			std::cerr << "Error: Shader Creation Failed!" << std::endl;
+
+		const GLchar* shaderSourceStrings[1];
+		GLint shaderSourceStringLengths[1];
+
+		shaderSourceStrings[0] = text.c_str();
+		shaderSourceStringLengths[0] = text.length();
+
+		glShaderSource(shader, 1, shaderSourceStrings, shaderSourceStringLengths);
+
+		glCompileShader(shader);
+		CheckShaderError(shader, GL_COMPILE_STATUS, false, "Error: Shader Failed To Compile: ");
+
+		return shader;
+	}
+
+	GLuint m_shaders[NUM_SHADERS];
 
 public:
 
+	void TranslateWorldMatrix(GLfloat x, GLfloat y, GLfloat z)
+	{
+		glTranslatef(x, y, z);
+	}
+
+	void TranslateWorldMatrix(glm::vec3 pos)
+	{
+		glTranslatef(pos.x, pos.y, pos.z);
+	}
+
+	void PushMatrix()
+	{
+		glPushMatrix();
+	}
+
+	void PopMatrix()
+	{
+		glPopMatrix();
+	}
+
+	void EnableImmediateMode(GLenum mode)
+	{
+		glBegin(mode);
+	}
+
+	void DisableImmediateMode()
+	{
+		glEnd();
+	}
+
+	void ImmediateNormal(GLfloat x, GLfloat y, GLfloat z)
+	{
+		glNormal3f(x, y, z);
+	}
+
+	void ImmediateVertex(GLfloat x, GLfloat y, GLfloat z)
+	{
+		glVertex3f(x, y, z);
+	}
+
+	void LoadShaderProgram(GLuint &shader, const std::string& fileName)
+	{
+		shader = glCreateProgram();
+		m_shaders[0] = CreateShader(LoadShader(fileName + ".vs"), GL_VERTEX_SHADER);
+		m_shaders[1] = CreateShader(LoadShader(fileName + ".fs"), GL_FRAGMENT_SHADER);
+
+		for (unsigned int i = 0; i < NUM_SHADERS; i++)
+			glAttachShader(shader, m_shaders[i]);
+
+		glBindAttribLocation(shader, 0, "position");
+
+		glLinkProgram(shader);
+		CheckShaderError(shader, GL_LINK_STATUS, true, "Error: Shader Program Failed To Link: ");
+
+		glValidateProgram(shader);
+		CheckShaderError(shader, GL_LINK_STATUS, true, "Error: Shader Program Failed To Validate: ");
+	}
+
+	void BindShader(GLuint &shader)
+	{
+		glUseProgram(shader);
+	}
+	void UnbindShader()
+	{
+		glUseProgram(0);
+	}
+
+	void DisposeShader(GLuint &shader)
+	{
+		for (unsigned int i = 0; i < NUM_SHADERS; i++)
+		{
+			glDetachShader(shader, m_shaders[i]);
+			glDeleteShader(m_shaders[i]);
+		}
+
+		glDeleteProgram(shader);
+	}
 	
 
 	int GetSeed()
@@ -68,11 +210,14 @@ public:
 	{
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(60.0, windowWidth / windowHeight, 0.01, 1000.0);
+		gluPerspective(70.0f, windowWidth / windowHeight, 0.01, 1000.0);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_LIGHTING);
+		glEnable(GL_TEXTURE_2D);
+		glEnable(GL_CULL_FACE);
 	}
 
 	void Set2D()
@@ -262,29 +407,29 @@ public:
 		SDL_Quit();
 	}
 
-	GLint GetShaderUniform(GLuint program, const GLchar *name)
+	void TranslateWorld(int x, int y, int z)
 	{
-		return glGetUniformLocation(program, name);
+		glTranslatef(x, y, z);
 	}
 
-	void SetShaderUniform(GLint location, GLfloat v_)
+	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_)
 	{
-		return glUniform1f(location, v_);
+		return glUniform1f(glGetUniformLocation(program, name), v_);
 	}
 
-	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1)
+	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_, GLfloat v1)
 	{
-		return glUniform2f(location, v_, v1);
+		return glUniform2f(glGetUniformLocation(program, name), v_, v1);
 	}
 
-	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2)
+	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_, GLfloat v1, GLfloat v2)
 	{
-		return glUniform3f(location, v_, v1, v2);
+		return glUniform3f(glGetUniformLocation(program, name), v_, v1, v2);
 	}
 
-	void SetShaderUniform(GLint location, GLfloat v_, GLfloat v1, GLfloat v2, GLfloat v3)
+	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_, GLfloat v1, GLfloat v2, GLfloat v3)
 	{
-		return glUniform4f(location, v_, v1, v2, v3);
+		return glUniform4f(glGetUniformLocation(program, name), v_, v1, v2, v3);
 	}
 
 	SDL_Window* GetWindow()
@@ -317,42 +462,6 @@ public:
 		glClear(mask);
 	}
 
-	void CreateList(GLuint id)
-	{
-		glNewList(id, GL_COMPILE);
-	}
-
-	void CallList(GLuint id)
-	{
-		glCallList(id);
-	}
-
-	void EndList()
-	{
-		glEndList();
-	}
-
-	void EnableImmediateMode(GLenum mode)
-	{
-		glBegin(mode);
-	}
-
-	void DisableImmediateMode()
-	{
-		glEnd();
-	}
-
-	void ImmediateNormal(GLfloat x, GLfloat y, GLfloat z)
-	{
-		glNormal3f(x, y, z);
-	}
-
-	void ImmediateVertex(GLfloat x, GLfloat y, GLfloat z)
-	{
-		glVertex3f(x, y, z);
-	}
-
-	
 	void RenderText(const TTF_Font *Font, const double& X, const double& Y, const std::string& Text)
 	{
 		glEnable(GL_TEXTURE_2D);
@@ -385,25 +494,45 @@ public:
 		glDisable(GL_TEXTURE_2D);
 	}
 
-	unsigned int LoadTexture(const char* filename)
+	void BindTexture(GLuint &tex, int i)
 	{
-		unsigned int num;
-		glGenTextures(1, &num);
+		glEnable(GL_TEXTURE_2D);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, tex);
+	}
+
+	void UnbindTexture()
+	{
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDisable(GL_TEXTURE_2D);
+	}
+
+	void DisposeTexture(GLuint &tex)
+	{
+		glDeleteTextures(1, &tex);
+	}
+
+	void LoadTexture(GLuint &tex, const char* filename)
+	{
+		glGenTextures(1, &tex);
 
 		SDL_Surface* img = IMG_Load_RW(SDL_RWFromFile(filename, "rb"), 1);
 
 		if (img == NULL)
 		{
-			printf("Unable to load bitmap: %s\n", SDL_GetError());
+			printf("Unable to load Image: %s\n", SDL_GetError());
+			tex = NULL;
 		}
 
 		else{
-			glBindTexture(GL_TEXTURE_2D, num);		
+			glBindTexture(GL_TEXTURE_2D, tex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img->w, img->h, 0, GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
 			SDL_FreeSurface(img);
-			return num;
 		}
-		return NULL;
 	}
 };
 #endif

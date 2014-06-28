@@ -143,7 +143,6 @@
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="SkyBox.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="WorldManager.h" />
     <ClInclude Include="XyEngine.h" />
@@ -157,6 +156,7 @@
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="SpaceChunks.cpp" />
     <ClCompile Include="Time.cpp" />
+    <ClCompile Include="WorldManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

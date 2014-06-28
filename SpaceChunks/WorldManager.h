@@ -5,71 +5,87 @@
 #include "Chunk.h"
 
 #define WORLD_SMALL 12
-#define WORLD_LARGE 18
+#define WORLD_LARGE 24
 
 const int SECLECTED_WORLD_SIZE = WORLD_LARGE;
 
 class WorldManager
 {
 private:
-	int m_chunksLoaded;
-	Chunk *m_Chunks[SECLECTED_WORLD_SIZE][SECLECTED_WORLD_SIZE];
+
+	std::vector<Chunk*> m_ChunkList;
+
+	glm::vec3 m_cameraPosition;
+	glm::vec3 m_cameraView;
+
+	int ASYNC_NUM_CHUNKS_PER_FRAME = 3;
+
 public:
 
+	WorldManager();
+
+	void Update(glm::vec3 cameraPosition, glm::vec3 cameraView);
+
+	void UpdateWorld(glm::vec3 cameraPosition, glm::vec3 cameraView);
+	
+	void UpdateGL();
+
+	void UpdateSetupList();
+	void UpdateRenderList();
+
+
+	void UpdateRebuildList();
+	void UpdateVisibilityList(glm::vec3 camPos);
+
+	 
 	Chunk* getChunkInWorld(int x, int y, int z)
 	{
-		Chunk* chunk;
+		Chunk* chunk = NULL;
 
-		for (int i = 0; i < SECLECTED_WORLD_SIZE; i++)
+		for (int i = 0; i < m_ChunkList.size(); i++)
 		{
-			for (int j = 0; j < SECLECTED_WORLD_SIZE; j++)
-			{
-				chunk = m_Chunks[i][j]->GetChunk(x, y, z);
+			Chunk *tmpChunk = m_ChunkList.at(i)->GetChunk(x, y, z);
 
-				if (chunk != NULL)
-				{
-					return chunk;
-					break;
-				}
+			if (tmpChunk != NULL)
+			{
+				chunk = tmpChunk;
+				continue;
 			}
 		}
-				
+
+		if (chunk != NULL)
+			return chunk;
+
+		return NULL;	
 	}
 
-	void CreateWorld()
+
+	long getVerts()
 	{
-		for (int x = 0; x < SECLECTED_WORLD_SIZE; x++)
+		long verts;
+
+		verts = 0;
+
+		for (int i = 0; i < m_ChunkList.size(); i++)
 		{
-			for (int z = 0; z < SECLECTED_WORLD_SIZE; z++)
-			{
-				m_Chunks[x][z] = new Chunk(glm::vec3(x * CHUNK_X, 0, z * CHUNK_Z));
-				m_Chunks[x][z]->CreateChunk();
-			}
+			//verts = verts + m_ChunkList.at(i)->GetVerts();
 		}
-		printf("World Created!");
+
+		return verts;
 	}
 
-	void Update()
-	{
-		for (int x = 0; x < SECLECTED_WORLD_SIZE; x++)
-		{
-			for (int z = 0; z < SECLECTED_WORLD_SIZE; z++)
-			{
-				m_Chunks[x][z]->UpdateChunk();
-			}
-		}
-	}
+	
 
 	void DisposeWorld()
 	{
-		for (int x = 0; x < SECLECTED_WORLD_SIZE; x++)
+		for (int i = 0; i < m_ChunkList.size(); i++)
 		{
-			for (int z = 0; z < SECLECTED_WORLD_SIZE; z++)
-			{
-				m_Chunks[x][z]->DisposeChunk();
-			}
+			m_ChunkList.at(i)->DisposeChunk();
 		}
 	}
 };
 
 #endif
+
+
+
