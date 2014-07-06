@@ -1,28 +1,29 @@
-#include <math.h>
+#pragma once
+#include "XyEngine.h"
 
-#ifndef CAMERA_H
-#define CAMERA_H
+class Camera
+{
+private:
+	glm::vec3 m_CamPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+	glm::vec3 m_CamRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+	XyEngine* m_Engine;
 
-void lockCamera();
-void moveCamera(float, float);
-void moveCameraUp(float, float);
-void Control(float, float, bool);
-void UpdateCamera();
+	void LockCamera();
+	void MoveCamera(float distance, float direction);
+	void MoveCameraUp(float distance, float direction);
 
-float getCamX();
-float getCamY();
-float getCamZ();
+public:
 
-float getCamPitch();
-float getcamYaw();
+	Camera(XyEngine* engine);
 
-void setCamPitch(float pitch);
-void setCamYaw(float yaw);
+	glm::vec3 GetCameraPosition();
+	void SetCameraPosition(glm::vec3 pos);
 
-void setCamX(float);
-void setCamY(float);
-void setCamZ(float);
-#endif
+	glm::vec3 GetCameraRotation();
+	void SetCameraRotation(glm::vec3 pos);
 
+	void UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn);
+	void UpdateCamera();
+};
 
 

@@ -1,10 +1,11 @@
 #version 400 core
 
-in vec3 position;
-
-uniform mat4 matrix;
+layout(location = 0) in vec4 coord;
+uniform mat4 mvp;
+varying vec4 texcoord;
 
 void main()
 {
-	gl_Position = vec4(position, 1.0);
+	texcoord = coord;
+    gl_Position = mvp * vec4(coord.xyz, 1.0); 
 }

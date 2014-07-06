@@ -1,12 +1,12 @@
-#ifndef XYENGINE_H
+﻿#ifndef XYENGINE_H
 #define XYENGINE_H
 
 #include <GL/glew.h>
 #include <SDL/SDL.h>
 #include <GLM/gtc/matrix_transform.hpp>
 #include <GLM/gtc/type_ptr.hpp>
+#define GLM_FORCE_RADIANS
 #include <GLM/glm.hpp>
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
@@ -22,9 +22,13 @@
 #include <SDL/SDL_ttf.h>
 #include <SDL/SDL_thread.h>
 #include <sstream>
-#include <functional>
-#include <Noise/simplexnoise.h>
-#include <thread>
+
+#include "ShaderUtil.h"
+#include "Matrices.h"
+
+#ifndef M_PI
+#define M_PI = 3.14159265358979
+#endif
 
 static double windowWidth = 1280;
 static double windowHeight = 720;
@@ -32,154 +36,67 @@ static double windowHeight = 720;
 static double MidX = windowWidth / 2;
 static double MidY = windowHeight / 2;
 
-extern bool ShowGrid;
+#define CHUNK_X 16
+#define CHUNK_Y 32
+#define CHUNK_Z 16
 
 class XyEngine
 {
 private:
+	void(*m_InitFunc)();
+	void(*m_RenderFunc)();
+	void(*m_InputFunc)(SDL_Event event);
+	bool m_FunctionSet = false;
+	float m_FrameRate;
+
 	SDL_Window* m_Window;
 	SDL_GLContext glcontext;
 	SDL_Event event;
 	bool m_running;
 	bool mousein;
+	Matrices m_pipeline;
+	GLuint m_posShader;
+	unsigned int m_FBO;
+	unsigned int m_RenderTexture;
+	unsigned int m_RenderTextureDepth;
 
-	float frameRate=500;
-
-	float m_frameTime = 1.0 / frameRate;
-
+	float m_frameTime;
 	float frames = 0;
-
 	float fpsRate;
 	int seed;
-
 	static const unsigned int NUM_SHADERS = 2;
-
-	std::string LoadShader(const std::string& fileName)
-	{
-		std::ifstream file;
-		file.open((fileName).c_str());
-
-		std::string output;
-		std::string line;
-
-		if (file.is_open())
-		{
-			while (file.good())
-			{
-				getline(file, line);
-				output.append(line + "\n");
-			}
-		}
-		else
-		{
-			std::cerr << "Unable to load shader: " << fileName << std::endl;
-		}
-
-		return output;
-	}
-
-	void CheckShaderError(GLuint shader, GLuint flag, bool isProgram, const std::string& errorMessage)
-	{
-		GLint success = 0;
-		GLchar error[1024] = { 0 };
-
-		if (isProgram)
-			glGetProgramiv(shader, flag, &success);
-		else
-			glGetShaderiv(shader, flag, &success);
-
-		if (success == GL_FALSE)
-		{
-			if (isProgram)
-				glGetProgramInfoLog(shader, sizeof(error), NULL, error);
-			else
-				glGetShaderInfoLog(shader, sizeof(error), NULL, error);
-
-			std::cerr << errorMessage << ": '" << error << "'" << std::endl;
-		}
-	}
-	GLuint CreateShader(const std::string& text, unsigned int type)
-	{
-		GLuint shader = glCreateShader(type);
-
-		if (shader == 0)
-			std::cerr << "Error: Shader Creation Failed!" << std::endl;
-
-		const GLchar* shaderSourceStrings[1];
-		GLint shaderSourceStringLengths[1];
-
-		shaderSourceStrings[0] = text.c_str();
-		shaderSourceStringLengths[0] = text.length();
-
-		glShaderSource(shader, 1, shaderSourceStrings, shaderSourceStringLengths);
-
-		glCompileShader(shader);
-		CheckShaderError(shader, GL_COMPILE_STATUS, false, "Error: Shader Failed To Compile: ");
-
-		return shader;
-	}
-
 	GLuint m_shaders[NUM_SHADERS];
-
+	GLuint text_program;
 public:
+	XyEngine();
 
-	void TranslateWorldMatrix(GLfloat x, GLfloat y, GLfloat z)
+	void SetFunctions(void(*initFunc)(), void(*renderFunc)(), void(*inputFunc)(SDL_Event event));
+	int CreateWindow(int width, int height, char* title, float frameRate);
+	int ReturnWithError(std::string err);
+	void LoadShaderProgram(GLuint &shader, const std::string& fileName);
+
+	Matrices GetPipeline()
 	{
-		glTranslatef(x, y, z);
+		return m_pipeline;
 	}
 
-	void TranslateWorldMatrix(glm::vec3 pos)
+	void AddUniformFloat(const GLchar *name​, float i)
 	{
-		glTranslatef(pos.x, pos.y, pos.z);
+		glUniform1f(glGetUniformLocation(m_posShader, name​), i);
 	}
 
-	void PushMatrix()
+	void AddUniformVector3(const GLchar *name​, glm::vec3 i)
 	{
-		glPushMatrix();
+		glUniform3f(glGetUniformLocation(m_posShader, name​), i.x, i.y, i.z);
 	}
 
-	void PopMatrix()
+	void AddUniformVector4(const GLchar *name​, glm::vec4 i)
 	{
-		glPopMatrix();
+		glUniform4f(glGetUniformLocation(m_posShader, name​), i.x, i.y, i.z, i.w);
 	}
 
-	void EnableImmediateMode(GLenum mode)
-	{
-		glBegin(mode);
-	}
+	~XyEngine();
 
-	void DisableImmediateMode()
-	{
-		glEnd();
-	}
-
-	void ImmediateNormal(GLfloat x, GLfloat y, GLfloat z)
-	{
-		glNormal3f(x, y, z);
-	}
-
-	void ImmediateVertex(GLfloat x, GLfloat y, GLfloat z)
-	{
-		glVertex3f(x, y, z);
-	}
-
-	void LoadShaderProgram(GLuint &shader, const std::string& fileName)
-	{
-		shader = glCreateProgram();
-		m_shaders[0] = CreateShader(LoadShader(fileName + ".vs"), GL_VERTEX_SHADER);
-		m_shaders[1] = CreateShader(LoadShader(fileName + ".fs"), GL_FRAGMENT_SHADER);
-
-		for (unsigned int i = 0; i < NUM_SHADERS; i++)
-			glAttachShader(shader, m_shaders[i]);
-
-		glBindAttribLocation(shader, 0, "position");
-
-		glLinkProgram(shader);
-		CheckShaderError(shader, GL_LINK_STATUS, true, "Error: Shader Program Failed To Link: ");
-
-		glValidateProgram(shader);
-		CheckShaderError(shader, GL_LINK_STATUS, true, "Error: Shader Program Failed To Validate: ");
-	}
 
 	void BindShader(GLuint &shader)
 	{
@@ -206,13 +123,19 @@ public:
 	{
 		return seed;
 	}
+
+	void GenSeed()
+	{
+	    srand(time(NULL));
+		seed = rand() / 1000;
+	}
 	void Set3D()
 	{
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		gluPerspective(70.0f, windowWidth / windowHeight, 0.01, 1000.0);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
+		m_pipeline.SetMatrixMode(PROJECTION_MATRIX);
+		m_pipeline.LoadIndentity();
+		m_pipeline.SetPerspective(70.0f, windowWidth / windowHeight, 0.01, 1000.0);
+		m_pipeline.SetMatrixMode(MODEL_MATRIX);
+		m_pipeline.LoadIndentity();
 
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_LIGHTING);
@@ -222,11 +145,11 @@ public:
 
 	void Set2D()
 	{
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		gluOrtho2D(0, windowWidth, windowHeight, 0);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
+		m_pipeline.SetMatrixMode(PROJECTION_MATRIX);
+		m_pipeline.LoadIndentity();
+		m_pipeline.SetOrtho(0, windowWidth, windowHeight, 0, 0.01, 1000.0);
+		m_pipeline.SetMatrixMode(MODEL_MATRIX);
+		m_pipeline.LoadIndentity();
 
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_LIGHTING);
@@ -234,9 +157,54 @@ public:
 		glDisable(GL_CULL_FACE);
 	}
 
-	void setFPS(float framerate)
+	void UpdateMatrix()
 	{
-		frameRate = framerate;
+		m_pipeline.UpdateMatrices(m_posShader);
+	}
+
+	void ClearMatrix()
+	{
+		m_pipeline.LoadIndentity();
+	}
+
+	void SetMatrix(int i)
+	{
+		m_pipeline.SetMatrixMode(i);
+	}
+
+	void TranslateWorldMatrix(float x, float y, float z)
+	{
+		m_pipeline.Translate(x, y, z);
+	}
+
+	void TranslateWorldMatrix(glm::vec3 pos)
+	{
+		m_pipeline.Translate(pos.x, pos.y, pos.z);
+	}
+
+	void PushMatrix()
+	{
+		m_pipeline.PushMatrix();
+	}
+
+	void PopMatrix()
+	{
+		m_pipeline.PopMatrix();
+	}
+
+	void RotateWorldMatrix_X(float angle)
+	{
+		m_pipeline.RotateX(angle);
+	}
+
+	void RotateWorldMatrix_Y(float angle)
+	{
+		m_pipeline.RotateY(angle);
+	}
+
+	void RotateWorldMatrix_Z(float angle)
+	{
+		m_pipeline.RotateZ(angle);
 	}
 
 	std::string ConvertIntToString(int num)
@@ -251,185 +219,14 @@ public:
 		return str;
 	}
 
-	XyEngine()
+	GLuint GetPosShader()
 	{
-		srand(time(NULL));
-		seed = rand() % 100;
-	}
-
-	~XyEngine()
-	{
-		if (m_Window != NULL)
-		{
-			DestroyWindow();
-		}
-	}
-
-	/* Width, Height, Title, Init Function, Render Function */
-	int CreateWindow(int width, int height, char* title, float frameRateIn, void(*initFunc)(), void(*renderFunc)(), void(*inputFunc)(SDL_Event event))
-	{
-		printf("[XYENGINE] XyEngine is Loading... \n");
-
-		frameRate = NULL;
-		setFPS(frameRateIn);
-
-		if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
-		{
-			printf("[CORE] SDL Failed to Init! \n");
-			return EXIT_FAILURE;
-		}
-
-		m_Window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
-
-		if (m_Window == NULL)
-		{
-			SDL_Quit();
-			printf("[CORE] SDL Failed to Create the Window! \n");
-			return EXIT_FAILURE;
-		}
-
-
-		glcontext = SDL_GL_CreateContext(m_Window);
-
-		if (glewInit() != GLEW_OK)
-		{
-			printf("[CORE] GLEW Failed To Init \n");
-			return EXIT_FAILURE;
-		}
-
-		if (TTF_Init() != 0)
-		{
-			printf("[CORE] SDL TTF Failed to Init! \n");
-			return EXIT_FAILURE;
-		}
-
-		if (!IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG))
-		{
-			printf("[CORE] SDL Image Failed to Init! \n");
-			return EXIT_FAILURE;
-		}
-
-		m_running = true;
-
-		initFunc();
-
-		double lastTime = Time::GetTime();
-		double unprocessedTime = 0;
-		double frameCounter = 0;
-		frames = 0;
-
-		SDL_Event event;
-
-		while (m_running)
-		{
-			bool render = false;
-
-			double startTime = Time::GetTime();
-			double passedTime = startTime - lastTime;
-			lastTime = startTime;
-
-			unprocessedTime += passedTime;
-			frameCounter += passedTime;
-
-			if (frameCounter >= 1.0)
-			{
-				fpsRate = frames;
-				frames = 0;
-				frameCounter = 0;
-			}
-
-			while (unprocessedTime > m_frameTime)
-			{
-				render = true;
-
-				while (SDL_PollEvent(&event))
-				{
-					inputFunc(event);
-
-					switch (event.type)
-					{
-
-					case SDL_QUIT:
-						m_running = false;
-						break;
-
-					case SDL_MOUSEBUTTONDOWN:
-						mousein = true;
-						SDL_ShowCursor(SDL_DISABLE);
-						break;
-
-					case SDL_KEYDOWN:
-						switch (event.key.keysym.sym)
-						{
-						case SDLK_ESCAPE:
-							mousein = false;
-							SDL_ShowCursor(SDL_ENABLE);
-							break;
-						}
-					}
-				}
-
-				unprocessedTime -= m_frameTime;
-			}
-
-			if (render)
-			{
-				if (mousein)
-					SDL_WarpMouseInWindow(m_Window, (int)MidX, (int)MidY);
-
-				//Render();
-				renderFunc();
-				SDL_GL_SwapWindow(m_Window);
-				frames++;
-			}
-			else
-			{
-				SDL_Delay(1);
-			}
-		}
-
-
-		return EXIT_SUCCESS;
+		return m_posShader;
 	}
 
 	float GetFPS()
 	{
 		return fpsRate;
-	}
-
-	void DestroyWindow()
-	{
-		printf("[CORE] XyEngine is shutting down... \n");
-		TTF_Quit();
-		IMG_Quit();
-		SDL_GL_DeleteContext(glcontext);
-		SDL_DestroyWindow(m_Window);
-		SDL_Quit();
-	}
-
-	void TranslateWorld(int x, int y, int z)
-	{
-		glTranslatef(x, y, z);
-	}
-
-	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_)
-	{
-		return glUniform1f(glGetUniformLocation(program, name), v_);
-	}
-
-	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_, GLfloat v1)
-	{
-		return glUniform2f(glGetUniformLocation(program, name), v_, v1);
-	}
-
-	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_, GLfloat v1, GLfloat v2)
-	{
-		return glUniform3f(glGetUniformLocation(program, name), v_, v1, v2);
-	}
-
-	void SetShaderUniform(GLuint program, const GLchar *name, GLfloat v_, GLfloat v1, GLfloat v2, GLfloat v3)
-	{
-		return glUniform4f(glGetUniformLocation(program, name), v_, v1, v2, v3);
 	}
 
 	SDL_Window* GetWindow()
@@ -462,31 +259,84 @@ public:
 		glClear(mask);
 	}
 
+	unsigned int CreateTexture(int w, int h, bool isDepth = false)
+	{
+		unsigned int textureID;
+		glGenTextures(1, &textureID);
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, (!isDepth ? GL_RGBA8 : GL_DEPTH_COMPONENT), w, h, 0, isDepth ? GL_DEPTH_COMPONENT : GL_RGBA, GL_FLOAT, NULL);;
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		int i = 0;
+		i = glGetError();
+		if (i != 0)
+		{
+			std::cout << "Error happened while creating the texture: " << i << std::endl;
+		}
+		glBindTexture(GL_TEXTURE_2D, 0);
+		return textureID;
+	}
+
 	void RenderText(const TTF_Font *Font, const double& X, const double& Y, const std::string& Text)
 	{
 		glEnable(GL_TEXTURE_2D);
 		/*Create some variables.*/
+
+		m_pipeline.LoadIndentity();
+
+		int m_attributeCoord = glGetAttribLocation(text_program, "coord");
+		glEnableVertexAttribArray(m_attributeCoord);
+
+		BindShader(text_program);
+
 		SDL_Color Color = { 255, 255, 255 };
 		SDL_Surface *Message = TTF_RenderText_Blended(const_cast<TTF_Font*>(Font), Text.c_str(), Color);
-		unsigned Texture = 0;
+		unsigned int Texture = 0;
+
+		int loc = glGetUniformLocation(text_program, "tex");
+
 
 		/*Generate an OpenGL 2D texture from the SDL_Surface*.*/
+		glActiveTexture(GL_TEXTURE1);
 		glGenTextures(1, &Texture);
 		glBindTexture(GL_TEXTURE_2D, Texture);
+		glUniform1i(loc, 0);
 
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Message->w, Message->h, 0, GL_BGRA,
+		
+
+		GLuint vbo;
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glVertexAttribPointer(m_attributeCoord, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, Message->w, Message->h, 0, GL_ALPHA,
 			GL_UNSIGNED_BYTE, Message->pixels);
 
 		/*Draw this texture on a quad with the given xyz coordinates.*/
-		glBegin(GL_QUADS);
-		glTexCoord2d(0, 0); glVertex3d(X, Y, 0);
-		glTexCoord2d(1, 0); glVertex3d(X + Message->w, Y, 0);
-		glTexCoord2d(1, 1); glVertex3d(X + Message->w, Y + Message->h, 0);
-		glTexCoord2d(0, 1); glVertex3d(X, Y + Message->h, 0);
-		glEnd();
+
+		GLfloat box[4][4] = 
+		{
+				{ X               , Y               , 0, 0 },
+				{ X + Message->w  , Y               , 1, 0 },
+				{ X + Message->w  , Y + Message->h  , 1, 1 },
+				{ X               , Y + Message->h  , 0, 1 },
+		};
+
+		glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+		UnbindShader();
 
 		/*Clean up.*/
 		glDeleteTextures(1, &Texture);
@@ -497,7 +347,7 @@ public:
 	void BindTexture(GLuint &tex, int i)
 	{
 		glEnable(GL_TEXTURE_2D);
-		glActiveTexture(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE + i);
 		glBindTexture(GL_TEXTURE_2D, tex);
 	}
 
@@ -534,5 +384,87 @@ public:
 			SDL_FreeSurface(img);
 		}
 	}
+
+	bool IsFaceYInView(int x, int y, int z, bool reversed, uint32_t m_blocks[CHUNK_X][CHUNK_Y][CHUNK_Z])
+	{
+		bool faceHidden;
+
+		if (reversed == false)
+		{
+			if (y > 0) {
+				if (m_blocks[x][y - 1][z] == 0) faceHidden = false;
+				else faceHidden = true;
+			}
+			else {
+				faceHidden = false;
+			}
+			return faceHidden;
+		}
+		else {
+			if (y < CHUNK_Y - 1) {
+				if (m_blocks[x][y + 1][z] == 0) faceHidden = false;
+				else faceHidden = true;
+			}
+			else {
+				faceHidden = false;
+			}
+			return faceHidden;
+		}
+	}
+
+	bool IsFaceXInView(int x, int y, int z, bool reversed, uint32_t m_blocks[CHUNK_X][CHUNK_Y][CHUNK_Z])
+	{
+		bool faceHidden;
+
+		if (reversed == false)
+		{
+			if (x > 0) {
+				if (m_blocks[x - 1][y][z] == 0) faceHidden = false;
+				else faceHidden = true;
+			}
+			else {
+				faceHidden = false;
+			}
+			return faceHidden;
+		}
+		else {
+			if (x < CHUNK_X - 1) {
+				if (m_blocks[x + 1][y][z] == 0) faceHidden = false;
+				else faceHidden = true;
+			}
+			else {
+				faceHidden = false;
+			}
+			return faceHidden;
+		}
+	}
+
+	bool IsFaceZInView(int x, int y, int z, bool reversed, uint32_t m_blocks[CHUNK_X][CHUNK_Y][CHUNK_Z])
+	{
+		bool faceHidden;
+
+		if (reversed == false)
+		{
+			if (z > 0) {
+				if (m_blocks[x][y][z - 1] == 0) faceHidden = false;
+				else faceHidden = true;
+			}
+			else {
+				faceHidden = false;
+			}
+			return faceHidden;
+		}
+		else {
+			if (z < CHUNK_Z - 1) {
+				if (m_blocks[x][y][z + 1] == 0) faceHidden = false;
+				else faceHidden = true;
+			}
+			else {
+				faceHidden = false;
+			}
+			return faceHidden;
+		}
+	}
+
 };
 #endif

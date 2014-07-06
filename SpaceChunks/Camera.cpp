@@ -1,136 +1,103 @@
 #include "Camera.h"
-#include "XyEngine.h"
 
-float camX = 0.0, camY = 0.0, camZ = 5.0;
-float camYaw = 0.0;
-float camPitch = 0.0;
-
-#ifndef M_PI
-#define M_PI = 3.14159265358979
-#endif
-
-float getcamYaw()
+Camera::Camera(XyEngine* engine)
 {
-	return camYaw;
+	this->m_Engine = engine;
 }
 
-float getCamPitch()
+glm::vec3 Camera::GetCameraPosition()
 {
-	return camPitch;
+	return m_CamPosition;
 }
 
-void setCamPitch(float pitch)
+void Camera::SetCameraPosition(glm::vec3 pos)
 {
-	camPitch = pitch;
+	this->m_CamPosition = pos;
 }
 
-void setCamYaw(float yaw)
+glm::vec3 Camera::GetCameraRotation()
 {
-	camYaw = yaw;
+	return m_CamRotation;
 }
 
-float getCamX()
+void Camera::SetCameraRotation(glm::vec3 pos)
 {
-	return camX;
-}
-float getCamY()
-{
-	return camY;
-
-}
-float getCamZ()
-{
-	return camZ;
+	this->m_CamRotation = pos;
 }
 
-void setCamX(float x)
+void Camera::LockCamera()
 {
-	camX = x;
-}
-void setCamY(float y)
-{
-	camY = y;
-}
-void setCamZ(float z){
-	camZ = z;
-}
+	if (m_CamRotation.y < 0.0)
+		m_CamRotation.y += 360;
 
-void lockCamera()
-{
-	if (camPitch > 90)
-		camPitch = 90;
+	if (m_CamRotation.y > 360.0)
+		m_CamRotation.y -= 360;
 
-	if (camPitch < -90)
-		camPitch = -90;
+	if (m_CamRotation.x > 90)
+		m_CamRotation.x = 90;
 
-	if (camYaw < 0.0)
-		camYaw += 360;
-
-	if (camYaw > 360.0)
-		camYaw -= 360;
+	if (m_CamRotation.x < -90)
+		m_CamRotation.x = -90;
 }
 
-void moveCamera(float dist, float dir)
+void Camera::MoveCamera(float distance, float direction)
 {
-	float rad = (camYaw + dir)*M_PI / 180.0;      //convert the degrees into radians
-	camX -= sin(rad)*dist;    //calculate the new coorinate, if you don't understand, draw a right triangle with the datas, you have
-	camZ -= cos(rad)*dist;    //and try to calculate the new coorinate with trigonometric functions, that should help
+	float rad = (m_CamRotation.y + direction) * M_PI / 180.0;
+	m_CamPosition.x -= sin(rad) * distance;
+	m_CamPosition.z -= cos(rad) * distance;
 }
 
-void moveCameraUp(float dist, float dir)
+void Camera::MoveCameraUp(float distance, float direction)
 {
-	//the the same, only this time we calculate the y coorinate
-	float rad = (camPitch + dir)*M_PI / 180.0;
-	camY += sin(rad)*dist;
+	float rad = (m_CamRotation.y + direction) * M_PI / 180.0;
+	m_CamPosition.y += sin(rad)*distance;
 }
 
-void Control(float movevel, float mousevel, bool mi)      //move and mouse sensitivity, and is the mouse inside the window?
+void Camera::UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn)
 {
-	if (mi)  //if the mouse is in the screen
+	if (mouseIn)
 	{
-		SDL_ShowCursor(SDL_DISABLE);    //we don't show the cursor
+		SDL_ShowCursor(SDL_DISABLE);
 		int tmpx, tmpy;
-		SDL_GetMouseState(&tmpx, &tmpy); //get the current position of the cursor
-		camYaw += mousevel*(MidX - tmpx);   //get the rotation, for example, if the mouse current position is 315, than 5*0.2, this is for Y
-		camPitch += mousevel*(MidY - tmpy); //this is for X
-		lockCamera();
+		SDL_GetMouseState(&tmpx, &tmpy); 
+		m_CamRotation.y += mouseSpeed*(MidX - tmpx);
+		m_CamRotation.x += mouseSpeed*(MidY - tmpy);
+		LockCamera();
 
 		const Uint8 *state = SDL_GetKeyboardState(NULL);
+
 		if (state[SDL_SCANCODE_W])
 		{
-			if (camPitch != 90 && camPitch != -90)
-				moveCamera(movevel, 0.0);
-			moveCameraUp(movevel, 0.0);
+			MoveCamera(moveSpeed, 0.0);
 		}
 		else if (state[SDL_SCANCODE_S])
 		{
-			if (camPitch != 90 && camPitch != -90)
-				moveCamera(movevel, 180.0);
-			moveCameraUp(movevel, 180.0);
+			MoveCamera(moveSpeed, 180.0);
 		}
 		else if (state[SDL_SCANCODE_A])
 		{
-			moveCamera(movevel, 90.0);
+			MoveCamera(moveSpeed, 90.0);
 		}
 		else if (state[SDL_SCANCODE_D])
 		{
-			moveCamera(movevel, 270);
+			MoveCamera(moveSpeed, 270);
 		}
 		else if (state[SDL_SCANCODE_SPACE])
 		{
-			camY += movevel;
+			m_CamPosition.y += moveSpeed;
 		}
 		else if (state[SDL_SCANCODE_LSHIFT])
 		{
-			camY -= movevel;
+			m_CamPosition.y -= moveSpeed;
 		}
 
 	}
-	glRotatef(-camPitch, 1.0, 0.0, 0.0);       //rotate the camera (more precisly move everything in the opposit direction)
-	glRotatef(-camYaw, 0.0, 1.0, 0.0);
+	m_Engine->RotateWorldMatrix_X(-m_CamRotation.x);
+	m_Engine->RotateWorldMatrix_Y(-m_CamRotation.y);
+	//m_Engine->RotateWorldMatrix_Z(-m_CamRotation.z);
 }
 
-void UpdateCamera()
+void Camera::UpdateCamera()
 {
-	glTranslatef(-camX, -camY, -camZ);        //move the camera
+	m_Engine->TranslateWorldMatrix(-m_CamPosition);
 }

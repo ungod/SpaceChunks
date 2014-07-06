@@ -5,7 +5,9 @@
 #include "Chunk.h"
 
 #define WORLD_SMALL 12
-#define WORLD_LARGE 24
+#define WORLD_LARGE 30
+
+#define NUM_RENDER_CHUNKS_PER_FRAME 5
 
 const int SECLECTED_WORLD_SIZE = WORLD_LARGE;
 
@@ -15,29 +17,58 @@ private:
 
 	std::vector<Chunk*> m_ChunkList;
 
+	std::vector<Chunk*> m_RebuildChunks;
+	std::vector<Chunk*> m_CreateChunks;
+	std::vector<Chunk*> m_RenderChunks;
+	std::vector<Chunk*> m_UnloadChunks;
+
+
+
+
+	XyEngine *m_renderer;
+
 	glm::vec3 m_cameraPosition;
 	glm::vec3 m_cameraView;
 
 	int ASYNC_NUM_CHUNKS_PER_FRAME = 3;
 
+	int chunksLoaded;
+	int chunksFrustum;
+	int viewDistance = 11;
+
 public:
 
-	WorldManager();
-
+	WorldManager(XyEngine *renderer);
 	void Update(glm::vec3 cameraPosition, glm::vec3 cameraView);
 
-	void UpdateWorld(glm::vec3 cameraPosition, glm::vec3 cameraView);
-	
-	void UpdateGL();
+	void UpdateUnloadList();
+
+
 
 	void UpdateSetupList();
 	void UpdateRenderList();
 
+	int GetViewDistance()
+	{
+		return viewDistance;
+	}
+
+	int GetLoadedChunks()
+	{
+		return chunksLoaded;
+	}
+	int GetFrustumChunks()
+	{
+		return chunksFrustum;
+	}
 
 	void UpdateRebuildList();
 	void UpdateVisibilityList(glm::vec3 camPos);
 
-	 
+	void SetBlock(int x, int y, int z);
+
+	void Dispose();
+
 	Chunk* getChunkInWorld(int x, int y, int z)
 	{
 		Chunk* chunk = NULL;
@@ -49,7 +80,7 @@ public:
 			if (tmpChunk != NULL)
 			{
 				chunk = tmpChunk;
-				continue;
+				break;
 			}
 		}
 
@@ -57,31 +88,6 @@ public:
 			return chunk;
 
 		return NULL;	
-	}
-
-
-	long getVerts()
-	{
-		long verts;
-
-		verts = 0;
-
-		for (int i = 0; i < m_ChunkList.size(); i++)
-		{
-			//verts = verts + m_ChunkList.at(i)->GetVerts();
-		}
-
-		return verts;
-	}
-
-	
-
-	void DisposeWorld()
-	{
-		for (int i = 0; i < m_ChunkList.size(); i++)
-		{
-			m_ChunkList.at(i)->DisposeChunk();
-		}
 	}
 };
 

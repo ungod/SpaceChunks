@@ -13,30 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\XyEngine">
-      <UniqueIdentifier>{9aed4b6d-c241-4232-acc0-51c4e2fc7cac}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\XyEngine">
       <UniqueIdentifier>{43bcf6a9-662f-40db-aae8-c797e3740a2d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Shader.h">
-      <Filter>Header Files\XyEngine</Filter>
-    </ClInclude>
     <ClInclude Include="XyEngine.h">
       <Filter>Header Files\XyEngine</Filter>
     </ClInclude>
-    <ClInclude Include="Mesh.h">
-      <Filter>Header Files\XyEngine</Filter>
-    </ClInclude>
-    <ClInclude Include="Game.h">
-      <Filter>Header Files\XyEngine</Filter>
-    </ClInclude>
     <ClInclude Include="Chunk.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Player.h">
@@ -45,13 +30,22 @@
     <ClInclude Include="Time.h">
       <Filter>Header Files\XyEngine</Filter>
     </ClInclude>
-    <ClInclude Include="..\includes\NOISE\simplexnoise.h">
-      <Filter>Header Files\XyEngine</Filter>
-    </ClInclude>
-    <ClInclude Include="Block.h">
-      <Filter>Header Files\XyEngine</Filter>
-    </ClInclude>
     <ClInclude Include="WorldManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Frustum.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrices.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderUtil.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="BlockUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -59,29 +53,23 @@
     <ClCompile Include="SpaceChunks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Shader.cpp">
-      <Filter>Source Files\XyEngine</Filter>
-    </ClCompile>
-    <ClCompile Include="Mesh.cpp">
-      <Filter>Source Files\XyEngine</Filter>
-    </ClCompile>
     <ClCompile Include="Chunk.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Player.cpp">
+    <ClCompile Include="WorldManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Time.cpp">
-      <Filter>Source Files\XyEngine</Filter>
+      <Filter>Header Files\XyEngine</Filter>
     </ClCompile>
-    <ClCompile Include="..\includes\NOISE\simplexnoise.cpp">
-      <Filter>Source Files\XyEngine</Filter>
+    <ClCompile Include="XyEngine.cpp">
+      <Filter>Header Files\XyEngine</Filter>
     </ClCompile>
-    <ClCompile Include="WorldManager.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Header Files\XyEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

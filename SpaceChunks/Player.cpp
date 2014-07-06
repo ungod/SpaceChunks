@@ -1,59 +1,47 @@
 #include "Player.h"
-#include "Camera.h"
 
-Player::Player(glm::vec3 pos, float pitch, float yaw)
+Player::Player(glm::vec3 pos, glm::vec3 rot, XyEngine* engine)
 {
-	m_pos = pos;
-	setCamX(m_pos.x);
-	setCamY(m_pos.y);
-	setCamZ(m_pos.z);
-
-	setCamPitch(pitch);
-	setCamYaw(yaw);
+	this->m_engine = engine;
+	this->m_pos = pos;
+	this->m_rot = rot;
+	this->m_Camera = new Camera(engine);
+	
+	this->m_Camera->SetCameraPosition(this->m_pos);
+	this->m_Camera->SetCameraPosition(this->m_rot);
 }
 
-void Player::Init()
+void Player::SetPosition(glm::vec3 pos)
 {
-	//initskybox(100.0f);
+	this->m_pos = pos;
+	this->m_Camera->SetCameraPosition(this->m_pos);
 }
 
-void Player::SetPosition(glm::vec3 pos, float pitch, float yaw)
+void Player::SetRotation(glm::vec3 rot)
 {
-	m_pos = pos;
-	setCamX(m_pos.x);
-	setCamY(m_pos.y);
-	setCamZ(m_pos.z);
-
-	setCamPitch(pitch);
-	setCamYaw(yaw);
+	this->m_rot = rot;
+	this->m_Camera->SetCameraPosition(this->m_rot);
 }
 
-glm::vec3 Player::GetPos()
+glm::vec3 Player::GetPosition()
 {
-	return m_pos;
+	return this->m_pos;
+}
+
+glm::vec3 Player::GetRotation()
+{
+	return this->m_rot;
 }
 
 void Player::Update(bool mousein)
 {
-	m_pos.x = getCamX();
-	m_pos.y = getCamY();
-	m_pos.z = getCamZ();
+	this->m_pos = this->m_Camera->GetCameraPosition();
+	this->m_rot = this->m_Camera->GetCameraRotation();
 
-	m_pitch = getCamPitch();
-	m_yaw = getcamYaw();
+	this->m_Camera->SetCameraPosition(this->m_pos);
+	this->m_Camera->SetCameraRotation(this->m_rot);
 
-	setCamPitch(m_pitch);
-	setCamYaw(m_yaw);
-	setCamX(m_pos.x);
-	setCamY(m_pos.y);
-	setCamZ(m_pos.z);
-
-	Control(0.3, 0.05, mousein);
-	//drawSkybox();
-	UpdateCamera();
-}
-
-Player::~Player()
-{
+	this->m_Camera->UpdateControls(0.3f, 0.05f, mousein);
+	this->m_Camera->UpdateCamera();
 
 }

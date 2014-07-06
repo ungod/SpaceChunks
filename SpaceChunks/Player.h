@@ -1,37 +1,23 @@
+#pragma once
 #include "XyEngine.h"
+#include "Camera.h"
 
 class Player
 {
 public:
-	Player(glm::vec3 pos, float pitch, float yaw);
-	void SetPosition(glm::vec3 pos, float pitch, float yaw);
-	glm::vec3 GetPos();
+	Player(glm::vec3 pos, glm::vec3 rot, XyEngine* engine);
+
+	void SetPosition(glm::vec3 pos);
+	glm::vec3 GetPosition();
+	void SetRotation(glm::vec3 rot);
+	glm::vec3 GetRotation();
+
 	void Update(bool mousein);
-	void Init();
-
-	void setPitch(float pitch)
-	{
-		this->m_pitch = pitch;
-	}
-	void setYaw(float yaw)
-	{
-		this->m_yaw = yaw;
-	}
-
-	float getYaw()
-	{
-		return m_yaw;
-	}
-	float getPitch()
-	{
-		return m_pitch;
-	}
-
-	~Player();
 private:
 	glm::vec3 m_pos;
-	float m_yaw;
-	float m_pitch;
+	XyEngine* m_engine;
+	glm::vec3 m_rot;
+	Camera* m_Camera;
 };
 
 
