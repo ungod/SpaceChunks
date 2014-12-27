@@ -1,26 +1,73 @@
 #include "XyEngine.h"
 
-XyEngine::XyEngine()
-{
-	srand(time(NULL));
-	seed = rand() % 100;
-}
-
-void XyEngine::SetFunctions(void(*initFunc)(), void(*renderFunc)(), void(*inputFunc)(SDL_Event event))
+XyEngine::XyEngine(void(*initFunc)(), void(*renderFunc)(), void(*inputFunc)(SDL_Event event), void(*physicsFunc)())
 {
 	this->m_InitFunc = initFunc;
 	this->m_RenderFunc = renderFunc;
 	this->m_InputFunc = inputFunc;
-	this->m_FunctionSet = true;
+	this->m_PhysicsFunc = physicsFunc;
+}
+
+int XyEngine::StaticPhysicsThread(void *ptr)
+{
+	return ((XyEngine*)ptr)->PhysicsThread();
+}
+
+int XyEngine::PhysicsThread()
+{
+	double lastTime = Time::GetTime();
+	double unprocessedTime = 0;
+	double frameCounter = 0;
+	pysicsFrames = 0;
+
+	while (m_running)
+	{
+		bool physicsUpdate = false;
+
+		double startTime = Time::GetTime();
+		double passedTime = startTime - lastTime;
+		lastTime = startTime;
+
+		unprocessedTime += passedTime;
+		frameCounter += passedTime;
+
+		if (frameCounter >= 1.0)
+		{
+			physicsRate = pysicsFrames;
+			pysicsFrames = 0;
+			frameCounter = 0;
+		}
+
+		while (unprocessedTime > m_physicsFrameTime)
+		{
+			physicsUpdate = true;
+			unprocessedTime -= m_physicsFrameTime;
+		}
+
+		if (physicsUpdate)
+		{
+			m_PhysicsFunc();
+			pysicsFrames++;
+		}
+		else{
+			SDL_Delay(1);
+		}
+
+	}
+
+	return 0;
 }
 
 int XyEngine::CreateWindow(int width, int height, char* title, float frameRate)
 {
 	double StartTime = Time::GetTime();
-	printf("[XYENGINE] XyEngine is Loading... \n");
+	Log("XyEngine is Loading...");
 	
-	if (this->m_FunctionSet == false)
-		return ReturnWithError("Functions Not Set!");
+	this->m_windowWidth = width;
+	this->m_windowHeight = height;
+
+	this->m_middleWidth = m_windowWidth / 2;
+	this->m_middleHeight = m_windowHeight / 2;
 
 	this->m_FrameRate = frameRate;
 	this->m_frameTime = 1.0 / this->m_FrameRate;
@@ -28,17 +75,12 @@ int XyEngine::CreateWindow(int width, int height, char* title, float frameRate)
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 		return ReturnWithError("SDL Failed To Init!");
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-
-	m_Window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
+	m_Window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_windowWidth, m_windowHeight, SDL_WINDOW_OPENGL);
 
 	if (m_Window == NULL)
 	{
 		SDL_Quit();
-		return ReturnWithError("SDL Failed To Create the WIndow!");
+		return ReturnWithError("SDL Failed To Create the Window!");
 	}
 
 	glcontext = SDL_GL_CreateContext(m_Window);
@@ -54,35 +96,25 @@ int XyEngine::CreateWindow(int width, int height, char* title, float frameRate)
 
 	m_running = true;
 
-	LoadShaderProgram(m_posShader, "shaders/basicShader");
-
-	
-
 	double lastTime = Time::GetTime();
 	double unprocessedTime = 0;
 	double frameCounter = 0;
 	frames = 0;
 
-	glEnable(GL_TEXTURE_2D);
+	m_InitFunc();
 
-	m_RenderTexture = CreateTexture(windowWidth, windowHeight);
-	//m_RenderTextureDepth = CreateTexture(windowWidth, windowHeight, true);
+	m_pPhysicsThread = SDL_CreateThread(StaticPhysicsThread, "PhysicsThread", this);
 
-	glGenFramebuffers(1, &m_FBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, m_FBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_RenderTexture, 0);
-	
-	int i = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if (i != GL_FRAMEBUFFER_COMPLETE)
-	{
-		std::cout << "FrameBuffer Failed! Error: " << i << std::endl;
+	if (NULL == m_pPhysicsThread) {
+		ReturnWithError("Physics Thread Failed to create");
 	}
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	else
+	{
+		Log("Physics Thread Created");
+	}
 
 	double EndTime = Time::GetTime() - StartTime;
-	std::cout << "XyEngine Took " << EndTime << " Seconds to Load!" << std::endl;
-
-	m_InitFunc();
+	std::cout << "Time Taken to load XyEngine: " << EndTime << std::endl;
 
 	SDL_Event event;
 
@@ -141,18 +173,9 @@ int XyEngine::CreateWindow(int width, int height, char* title, float frameRate)
 		if (render)
 		{
 			if (mousein)
-				SDL_WarpMouseInWindow(m_Window, (int)MidX, (int)MidY);
-
-			
-			BindShader(m_posShader);
-			m_pipeline.UpdateMatrices(m_posShader);
-
-			//glBindFramebuffer(GL_FRAMEBUFFER, m_FBO);
+				SDL_WarpMouseInWindow(m_Window, m_middleWidth, m_middleHeight);
 
 			m_RenderFunc();
-			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			
-			//UnbindShader();
 			SDL_GL_SwapWindow(m_Window);
 			frames++;
 		}
@@ -168,27 +191,62 @@ int XyEngine::CreateWindow(int width, int height, char* title, float frameRate)
 
 int XyEngine::ReturnWithError(std::string err)
 {
-	std::cout << " " << std::endl;
-	std::cout << "Error: " << err << std::endl;
+	Log(err.c_str());
 	return EXIT_FAILURE;
 }
 
-void XyEngine::LoadShaderProgram(GLuint &shader, const std::string& fileName)
+void XyEngine::Log(const char* text)
 {
-	shader = glCreateProgram();
-	m_shaders[0] = ShaderUtil::CreateShader(ShaderUtil::LoadShader(fileName + ".vs"), GL_VERTEX_SHADER);
-	m_shaders[1] = ShaderUtil::CreateShader(ShaderUtil::LoadShader(fileName + ".fs"), GL_FRAGMENT_SHADER);
+	std::cout << "[XYEngine] " << text << std::endl;
+}
 
-	for (unsigned int i = 0; i < NUM_SHADERS; i++)
-		glAttachShader(shader, m_shaders[i]);
+void XyEngine::RenderText(float x, float y, const std::string message)
+{
 
-	glBindAttribLocation(shader, 0, "position");
+	SDL_Color color = { 255, 255, 255 };
 
-	glLinkProgram(shader);
-	ShaderUtil::CheckShaderError(shader, GL_LINK_STATUS, true, "Error: Shader Program Failed To Link: ");
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 
-	glValidateProgram(shader);
-	ShaderUtil::CheckShaderError(shader, GL_LINK_STATUS, true, "Error: Shader Program Failed To Validate: ");
+	gluOrtho2D(0, m_windowWidth, m_windowHeight, 0);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	TTF_Font * m_font = TTF_OpenFont("fonts/font3.ttf", 14);
+	SDL_Surface * sFont = TTF_RenderText_Blended(m_font, message.c_str(), color);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sFont->w, sFont->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, sFont->pixels);
+
+	glBegin(GL_QUADS);
+	{
+		glTexCoord2f(0.0f, 0.0f); glVertex2f(x, y);
+		glTexCoord2f(1.0f, 0.0f); glVertex2f(x + sFont->w, y);
+		glTexCoord2f(1.0f, 1.0f); glVertex2f(x + sFont->w, y + sFont->h);
+		glTexCoord2f(0.0f, 1.0f); glVertex2f(x, y + sFont->h);
+	}
+	glEnd();
+
+	glDisable(GL_BLEND);
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_DEPTH_TEST);
+
+	glMatrixMode(GL_PROJECTION);
+
+	glDeleteTextures(1, &texture);
+	TTF_CloseFont(m_font);
+	SDL_FreeSurface(sFont);
+
 }
 
 XyEngine::~XyEngine()

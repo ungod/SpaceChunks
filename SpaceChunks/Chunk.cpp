@@ -2,65 +2,83 @@
 
 #include <GLM/gtc/noise.hpp>
 
-#include "BlockUtil.h"
+WorldManager* Chunk::m_pWorld;
+XyEngine* Chunk::m_pRenderer;
 
-int seed;
-float CalculateNoiseValue(glm::vec3 pos, glm::vec3 offset, float scale)
+BlockType Chunk::GetTheoreticalBlock(glm::vec3 pos)
 {
+	int chunkSeed = m_pRenderer->GetSeed();
 
-	float noiseX = abs((pos.x + offset.x) * scale);
-	float noiseY = abs((pos.y + offset.y) * scale);
-	float noiseZ = abs((pos.z + offset.z) * scale);
+	glm::vec3 grain0Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
+	glm::vec3 grain1Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
+	glm::vec3 grain2Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
 
-	return std::max(0.0f, glm::simplex(glm::vec2(noiseX, noiseZ)));
+	return GetTheoreticalBlock(pos, grain0Offset, grain1Offset, grain2Offset);
 }
 
-int Noise(int x, int y, float scale, float mag, float exp)
+BlockType Chunk::GetTheoreticalBlock(glm::vec3 pos, glm::vec3 offset0, glm::vec3 offset1, glm::vec3 offset2)
 {
-	return (int)(pow(glm::simplex(glm::vec2(x / scale, y / scale)*mag), exp));
+
+	float heightBase = 20;
+	float maxHeight = CHUNK_Y - 20;
+	float heightSwing = maxHeight - heightBase;
+
+	float mountainValue = CalculateNoiseValue(pos, offset1, 0.007f);
+
+	mountainValue = sqrt(mountainValue);
+
+	mountainValue *= heightSwing;
+	mountainValue += heightBase;
+
+	if (mountainValue >= pos.y)
+		return BlockType::Grass;
+	return BlockType::Air;
+
 }
 
-Chunk::Chunk(glm::vec3 pos, XyEngine *engine)
+Chunk::Chunk(glm::vec3 pos, XyEngine *engine, WorldManager *world)
 {
 	m_position = pos;
-	renderer = engine;
+	m_pRenderer = engine;
+	Chunk::m_pWorld = world;
 
-	memset(m_blocks, 0, sizeof m_blocks);
-	m_changed = true;
-	glGenBuffers(1, &vbo);
+	m_pBlocks = new Block**[CHUNK_X];
+	for (int i = 0; i < CHUNK_X; i++)
+	{
+		m_pBlocks[i] = new Block*[CHUNK_Y];
 
-	seed = renderer->GetSeed();
+		for (int j = 0; j < CHUNK_Y; j++)
+		{
+			m_pBlocks[i][j] = new Block[CHUNK_Z];
+		}
+	}
 
-	glm::vec3 grain0Offset(seed * 10000, seed * 10000, seed * 10000);
-	glm::vec3 grain1Offset(seed * 10000, seed * 10000, seed * 10000);
-	glm::vec3 grain2Offset(seed * 10000, seed * 10000, seed * 10000);
+	m_pChanged = true;
+	m_pChunkID = glGenLists(1);
+
+	m_pRenderer->LoadTexture(m_pTextureID, "img/textures.jpg");
+	int chunkSeed = m_pRenderer->GetSeed();
+
+	glm::vec3 grain0Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
+	glm::vec3 grain1Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
+	glm::vec3 grain2Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
 
 	for (int x = 0; x < CHUNK_X; x++)
 	{
-		float noiseX = ((float)x + m_position.x) / 20;
-
 		for (int y = 0; y < CHUNK_Y; y++)
 		{
-			float noiseY = ((float)y + m_position.y) / 35;
-
 			for (int z = 0; z < CHUNK_Z; z++)
 			{
-				float noiseZ = ((float)z + m_position.z) / 20;
+				glm::vec3 pos(x, y, z);
+				pos += m_position;
 
-				float noiseValue = glm::simplex(glm::vec3(noiseX, noiseY, noiseZ));
-
-				noiseValue += (20.0f - (float)y) / 10;
-
-				if (noiseValue > 0.2f)
-				{
-					m_blocks[x][y][z] = BlockUtil::PackBlock(255, 0, 0);
-				}
-					
+				m_pBlocks[x][y][z].SetActive(true);
+				m_pBlocks[x][y][z].SetBlockType(GetTheoreticalBlock(pos, grain0Offset, grain1Offset, grain2Offset));
 			}
 		}
 	}
 
-	m_loaded = true;
+	m_pLoaded = true;
 }
 
 glm::vec3 Chunk::GetCenter()
@@ -68,99 +86,153 @@ glm::vec3 Chunk::GetCenter()
 	return glm::vec3(m_position.x - (CHUNK_X / 2), m_position.y - (CHUNK_Y / 2), m_position.z - (CHUNK_Z / 2));
 }
 
+float Chunk::CalculateNoiseValue(glm::vec3 pos, glm::vec3 offset, float scale)
+{
+	float noiseX = abs((pos.x + offset.x) * scale);
+	float noiseY = abs((pos.y + offset.y) * scale);
+	float noiseZ = abs((pos.z + offset.z) * scale);
+
+	return std::max(0.0f, glm::simplex(glm::vec3(noiseX, noiseY, noiseZ)));
+}
+
 void Chunk::Rebuild()
 {
-	m_changed = false;
+	m_pChanged = false;
 
-	byte4 vertex[CHUNK_X * CHUNK_Y * CHUNK_Z * 18];
-	int i = 0;
+	glNewList(m_pChunkID, GL_COMPILE);
+	glBegin(GL_QUADS);
+
 	int faces = 0;
 
-	for (int x = 0; x < CHUNK_X; x++)
+	for (int _x = 0; _x < CHUNK_X; _x++)
 	{
-		for (int y = 0; y < CHUNK_Y; y++)
+		for (int _y = 0; _y < CHUNK_Y; _y++)
 		{
-			for (int z = 0; z < CHUNK_Z; z++)
+			for (int _z = 0; _z < CHUNK_Z; _z++)
 			{
-				if (!m_blocks[x][y][z])
+				if (m_pBlocks[_x][_y][_z].GetBlockType() == BlockType::Air)
 					continue;
 
-				//glm::vec3 col = BlockUtil::GetBaseRGBFromBlock(m_blocks[x][y][z]);
-				//std::cout << col.r << " " << col.g << " " << col.b << " " << std::endl;
+				float x = (float)_x;
+				float y = (float)_y;
+				float z = (float)_z;
 
-				if (!renderer->IsFaceXInView(x, y, z, false, m_blocks))
+				float texCoordsDirt[8] = 
 				{
-					vertex[i++] = byte4(x, y, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y + 1, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y + 1, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y + 1, z + 1, m_blocks[x][y][z]);
-					faces++;
-				}
+				//  X     Y
+					0.0f, 1.0f,
+					0.0f, 0.0f,
+					0.0625f, 0.0f,
+					0.0625f, 1.0f			
+				};
 
-				if (!renderer->IsFaceXInView(x, y, z, true, m_blocks))
+				float texCoordsGrass[8] =
 				{
-					vertex[i++] = byte4(x + 1, y, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y + 1, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y + 1, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y + 1, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y, z + 1, m_blocks[x][y][z]);
-					faces++;
-				}
-				
-				if (!renderer->IsFaceYInView(x, y, z, false, m_blocks))
-				{
-					vertex[i++] = byte4(x, y, z, -1);
-					vertex[i++] = byte4(x + 1, y, z, -1);
-					vertex[i++] = byte4(x, y, z + 1, -1);
-					vertex[i++] = byte4(x + 1, y, z, -1);
-					vertex[i++] = byte4(x + 1, y, z + 1, -1);
-					vertex[i++] = byte4(x, y, z + 1, -1);
-					faces++;
-				}
+					//  X     Y
+					0.125f, 1.0f,
+					0.125f, 0.0f,
+					0.1875f, 0.0f,
+					0.1875f, 1.0f
+				};
 
-				if (!renderer->IsFaceYInView(x, y, z, true, m_blocks))
+				float texCoordsSide[8] =
 				{
-					vertex[i++] = byte4(x, y + 1, z, -1);
-					vertex[i++] = byte4(x, y + 1, z + 1, -1);
-					vertex[i++] = byte4(x + 1, y + 1, z, -1);
-					vertex[i++] = byte4(x + 1, y + 1, z, -1);
-					vertex[i++] = byte4(x, y + 1, z + 1, -1);
-					vertex[i++] = byte4(x + 1, y + 1, z + 1, -1);
-					faces++;
-				}
-				
-				if (!renderer->IsFaceZInView(x, y, z, false, m_blocks))
+					//  X     Y
+					0.0625f, 1.0f,
+					0.0625f, 0.0f,
+					0.125f, 0.0f,
+					0.125f, 1.0f
+				};
+
+
+				if (IsTransparent(_x, _y, _z - 1))
 				{
-					vertex[i++] = byte4(x, y, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y + 1, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y + 1, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y + 1, z, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y, z, m_blocks[x][y][z]);
+					glNormal3f(0.0f, 0.0f, -1.0f);
+					glTexCoord2f(texCoordsSide[0], texCoordsSide[1]);
+					glVertex3f(x + 1.0f, y, z);
+					glTexCoord2f(texCoordsSide[2], texCoordsSide[3]);
+					glVertex3f(x, y, z);
+					glTexCoord2f(texCoordsSide[4], texCoordsSide[5]);
+					glVertex3f(x, y + 1.0f, z);
+					glTexCoord2f(texCoordsSide[6], texCoordsSide[7]);
+					glVertex3f(x + 1.0f, y + 1.0f, z);
 					faces++;
 				}
 
-				if (!renderer->IsFaceZInView(x, y, z, true, m_blocks))
+				if (IsTransparent(_x, _y, _z + 1))
 				{
-					vertex[i++] = byte4(x, y, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y + 1, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x, y + 1, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y, z + 1, m_blocks[x][y][z]);
-					vertex[i++] = byte4(x + 1, y + 1, z + 1, m_blocks[x][y][z]);
+					glNormal3f(0.0f, 0.0f, 1.0f);
+					glTexCoord2f(texCoordsSide[0], texCoordsSide[1]);
+					glVertex3f(x, y, z + 1.0f);
+					glTexCoord2f(texCoordsSide[2], texCoordsSide[3]);
+					glVertex3f(x + 1.0f, y, z + 1.0f);
+					glTexCoord2f(texCoordsSide[4], texCoordsSide[5]);
+					glVertex3f(x + 1.0f, y + 1.0f, z + 1.0f);
+					glTexCoord2f(texCoordsSide[6], texCoordsSide[7]);
+					glVertex3f(x, y + 1.0f, z + 1.0f);
 					faces++;
 				}
-				
+				if (IsTransparent(_x + 1, _y, _z))
+				{
+					glNormal3f(1.0f, 0.0f, 0.0f);
+					glTexCoord2f(texCoordsSide[0], texCoordsSide[1]);
+					glVertex3f(x + 1.0f, y, z + 1.0f);
+					glTexCoord2f(texCoordsSide[2], texCoordsSide[3]);
+					glVertex3f(x + 1.0f, y, z);
+					glTexCoord2f(texCoordsSide[4], texCoordsSide[5]);
+					glVertex3f(x + 1.0f, y + 1.0f, z);
+					glTexCoord2f(texCoordsSide[6], texCoordsSide[7]);
+					glVertex3f(x + 1.0f, y + 1.0f, z + 1.0f);
+					faces++;
+				}
+
+				if (IsTransparent(_x - 1, _y, _z))
+				{
+					glNormal3f(-1.0f, 0.0f, 0.0f);
+					glTexCoord2f(texCoordsSide[0], texCoordsSide[1]);
+					glVertex3f(x, y, z);
+					glTexCoord2f(texCoordsSide[2], texCoordsSide[3]);
+					glVertex3f(x, y, z + 1.0f);
+					glTexCoord2f(texCoordsSide[4], texCoordsSide[5]);
+					glVertex3f(x, y + 1.0f, z + 1.0f);
+					glTexCoord2f(texCoordsSide[6], texCoordsSide[7]);
+					glVertex3f(x, y + 1.0f, z);
+					faces++;
+				}
+
+				if (IsTransparent(_x, _y - 1, _z))
+				{
+					glNormal3f(0.0f, -1.0f, 0.0f);
+					glTexCoord2f(texCoordsDirt[0], texCoordsDirt[1]);
+					glVertex3f(x, y, z);
+					glTexCoord2f(texCoordsDirt[2], texCoordsDirt[3]);
+					glVertex3f(x + 1.0f, y, z);
+					glTexCoord2f(texCoordsDirt[4], texCoordsDirt[5]);
+					glVertex3f(x + 1.0f, y, z + 1.0f);
+					glTexCoord2f(texCoordsDirt[6], texCoordsDirt[7]);
+					glVertex3f(x, y, z + 1.0f);
+					faces++;
+				}
+
+				if (IsTransparent(_x, _y + 1, _z))
+				{
+					glNormal3f(0.0f, 1.0f, 0.0f);
+					glTexCoord2f(texCoordsGrass[0], texCoordsGrass[1]);
+					glVertex3f(x + 1.0f, y + 1.0f, z);
+					glTexCoord2f(texCoordsGrass[2], texCoordsGrass[3]);
+					glVertex3f(x, y + 1.0f, z);
+					glTexCoord2f(texCoordsGrass[4], texCoordsGrass[5]);
+					glVertex3f(x, y + 1.0f, z + 1.0f);
+					glTexCoord2f(texCoordsGrass[6], texCoordsGrass[7]);
+					glVertex3f(x + 1.0f, y + 1.0f, z + 1.0f);
+					faces++;
+				}
 			}
 		}
 	}
 
-	elements = i;
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, i * sizeof *vertex, vertex, GL_STATIC_DRAW);
+	glEnd();
+	glEndList();
 }
 
 glm::vec3 Chunk::GetPosition()
@@ -170,25 +242,113 @@ glm::vec3 Chunk::GetPosition()
 
 void Chunk::Render()
 {		
-	renderer->PushMatrix();
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-
+	
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_2D);
 
-	renderer->AddUniformVector4("colorIn", glm::vec4(0.0f, 0.41f, 0.23f, 1.0f));
+	m_pRenderer->PushMatrix();
+	m_pRenderer->TranslateWorldMatrix(m_position);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glVertexAttribPointer(0, 4, GL_BYTE, GL_FALSE, 0, 0);
-	renderer->TranslateWorldMatrix(m_position);
-	renderer->UpdateMatrix();
-	glDrawArrays(GL_TRIANGLES, 0, elements);
+	m_pRenderer->BindTexture(m_pTextureID, 1);
+		glCallList(m_pChunkID);
+
+	m_pRenderer->PopMatrix();
+
+	glDisable(GL_TEXTURE_2D);
+}
+
+bool Chunk::IsTransparent(int x, int y, int z)
+{
+	if (y < 0) return false;
+
+	uint16_t block = GetBlock(x, y, z);
+	switch (block)
+	{
+	default:
+	case 0:
+		return true;
+
+	case 1: return false;
+	}
+}
+
+Chunk* Chunk::FindChunk(glm::vec3 pos)
+{
+	for (int i = 0; i < m_pWorld->GetChunkList().size(); i++)
+	{
+		glm::vec3 cpos = m_pWorld->GetChunkList().at(i)->GetPosition();
+
+		if ((m_position.x < cpos.x) || (m_position.z < cpos.z) || (m_position.x >= cpos.x + CHUNK_X) || (m_position.z >= cpos.z + CHUNK_Z))
+		{
+			return m_pWorld->GetChunkList().at(i);
+		}
+		else
+		{
+			return NULL;
+		}
+		return NULL;	
+	}
+	return NULL;
+}
+
+BlockType Chunk::GetBlock(int x, int y, int z)
+{
+	if ((y < 0) || (y >= CHUNK_Y))
+		return BlockType::Air;
 	
-	glDisableVertexAttribArray(0);
+	
+	if ((x < 0) || (z < 0) || (x >= CHUNK_X) || (z >= CHUNK_Z))
+	{
+		glm::vec3 worldPos(x, y, z); 
+		worldPos += m_position;
 
-	renderer->PopMatrix();
+		Chunk* chunk = Chunk::FindChunk(worldPos);
+
+		if (chunk == this)
+		{
+			return BlockType::Air;
+		}		
+
+		if (chunk == NULL)
+		{
+			return GetTheoreticalBlock(worldPos);
+		}
+
+		return chunk->GetBlock(worldPos);
+ 
+		return BlockType::Air;
+	}
+	
+	
+	return m_pBlocks[x][y][z].GetBlockType();
+}
+
+BlockType Chunk::GetBlock(glm::vec3 pos)
+{
+	pos -= m_position;
+
+	int x = (int)floorf(pos.x);
+	int y = (int)floorf(pos.y);
+	int z = (int)floorf(pos.z);
+	return GetBlock(x, y, z);
+
+}
+
+void Chunk::SetBlock(int x, int y, int z, BlockType type)
+{
+	m_pBlocks[x][y][z].SetBlockType(type);
+	m_pChanged = true;
+}
+
+bool Chunk::ShouldRebuildChunk()
+{
+	return m_pChanged;
+}
+
+bool Chunk::IsChunkLoaded()
+{
+	return m_pLoaded;
 }
 
 Chunk* Chunk::GetChunk(int x, int y, int z)
@@ -264,20 +424,21 @@ Chunk* Chunk::GetChunk(int x, int y, int z)
 	}
 }
 
-uint32_t Chunk::getBlock(int x, int y, int z)
-{
-	return m_blocks[x][y][z];
-}
-
-void Chunk::setBlock(int x, int y, int z, uint32_t type)
-{
-	m_blocks[x][y][z] = type;
-	m_changed = true;
-}
-
 Chunk::~Chunk()
 {
-	m_loaded = false;
-	glDeleteBuffers(1, &vbo);
-	delete m_blocks;
+	m_pLoaded = false;
+	glDeleteLists(m_pChunkID, 1);
+	
+	for (int i = 0; i < CHUNK_X; ++i)
+	{
+		for (int j = 0; j < CHUNK_Y; ++j)
+		{
+			delete[] m_pBlocks[i][j];
+		}
+
+		delete[] m_pBlocks[i];
+	}
+	delete[] m_pBlocks;
+
 }
+

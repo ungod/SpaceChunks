@@ -33,15 +33,17 @@ glm::vec3 Player::GetRotation()
 	return this->m_rot;
 }
 
-void Player::Update(bool mousein)
+void Player::UpdatePosition()
 {
 	this->m_pos = this->m_Camera->GetCameraPosition();
 	this->m_rot = this->m_Camera->GetCameraRotation();
+}
 
+void Player::Update(bool mousein)
+{
 	this->m_Camera->SetCameraPosition(this->m_pos);
 	this->m_Camera->SetCameraRotation(this->m_rot);
 
 	this->m_Camera->UpdateControls(0.3f, 0.05f, mousein);
 	this->m_Camera->UpdateCamera();
-
 }

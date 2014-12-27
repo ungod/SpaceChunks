@@ -13,11 +13,24 @@ public:
 	glm::vec3 GetRotation();
 
 	void Update(bool mousein);
+	void UpdatePosition();
+
+	bool IsGrounded()
+	{
+		return m_Grounded;
+	}
+
+	void SetGrounded(bool g)
+	{
+		m_Grounded = g;
+	}
+
 private:
 	glm::vec3 m_pos;
 	XyEngine* m_engine;
 	glm::vec3 m_rot;
 	Camera* m_Camera;
+	bool m_Grounded;
 };
 
 

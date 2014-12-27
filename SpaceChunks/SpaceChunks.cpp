@@ -1,56 +1,39 @@
 #include "XyEngine.h"
 XyEngine* engine;
+
 #include "Player.h"
 #include "Chunk.h"
 #include "WorldManager.h"
 
-#include "BlockUtil.h"
-
-bool ShowGrid = false;
-
-bool showDebug = false;
 
 Player *player;
-
 WorldManager *world;
 
-std::string spaceChunkLog = "Log...";
+bool isDebug = true;
+bool enableLighting = true;
 
-void Log(std::string log)
-{
-	spaceChunkLog = " ";
-	spaceChunkLog.append(log);
-}
 
 void Init()
 {
-	engine->ClearScreen(0.12, 0.56, 1.0, 1.0);
+	engine->ClearScreen(0.12f, 0.56f, 1.0f, 1.0f);
 	player = new Player(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), engine);
+
 	glClearColor(0.12f, 0.56f, 1.0f, 1.0f);
 
-	glViewport(0, 0, windowWidth, windowHeight);
-	engine->Set3D();
+	
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_MULTISAMPLE_ARB);
+
+	glViewport(0, 0, (GLsizei)engine->GetWindowWidth(), (GLsizei)engine->GetWindowHeight());
+	engine->Set3D();
 
 	engine->GenSeed();
+
 	double StartTime = Time::GetTime();
 	world->UpdateSetupList();
 	double EndTime = Time::GetTime() - StartTime;
 	std::cout << "World Took " << EndTime << " Seconds to Load!" << std::endl;
-
-	spaceChunkLog = "SpaceChunks Has Loaded...";
-	
-
-	printf(" \n \n \n");
-
-	uint32_t block = BlockUtil::PackBlock(63, 104, 38);
-
-	std::cout << "Color Data: " << block << std::endl;
-
-	glm::vec3 blockOut = BlockUtil::GetBaseRGBFromBlock(block);
-
-	std::cout << "Color Out: " << blockOut.r << " " << blockOut.g << " " << blockOut.b  << std::endl;
 }
 
 void Input(SDL_Event event)
@@ -60,16 +43,22 @@ void Input(SDL_Event event)
 	case SDL_KEYDOWN:
 		switch (event.key.keysym.sym)
 		{
-			case SDLK_l:
-			{
-				player->SetPosition(glm::vec3(0, 20, 0));
-				Log("[Player Name] Teleported To: X: " + engine->ConvertIntToString(0) + " Y: " + engine->ConvertIntToString(20) + " Z: " + engine->ConvertIntToString(0));
-			}	
-			break;
+			case SDLK_l:		
+				player->SetPosition(glm::vec3(0, 64, 0));		
+				break;
 
 			case SDLK_i:		
 				world->Dispose();
-				break;		
+				break;	
+			case SDLK_F3:
+				isDebug = !isDebug;
+				break;
+			case SDLK_F4:
+				enableLighting = !enableLighting;
+				break;
+			case SDLK_q:
+				world->SetBlock(player->GetPosition().x, player->GetPosition().y, player->GetPosition().z);
+				break;
 		}
 		break;
 	}
@@ -80,46 +69,63 @@ void Render()
 	engine->ClearScreen(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	engine->Set3D();
-	
+
+
 		player->Update(engine->IsMouseIn());
 
 		world->Update(player->GetPosition(), player->GetRotation());
+		
+		GLfloat ambient_color[] = { 0.7f, 0.7f, 0.7f, 0.7f };
+		GLfloat light_position[] = { 1.0f, 1.0f, 1.0f, 0.0f };
 
-		if (showDebug)
+		glLightfv(GL_LIGHT0, GL_AMBIENT, ambient_color);
+		glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
+		glEnable(GL_LIGHTING);
+		glEnable(GL_LIGHT0);
+		glShadeModel(GL_SMOOTH);
+
+		
+
+		if (isDebug)
 		{
 			engine->Set2D();
-			printf("Text Render");
-			//engine->RenderText(font, 5, 0, "Space Chunks Alpha 0.2");
-			//engine->RenderText(font, 5, 20, "(C) 2014 Dominic Maas");
-			//engine->RenderText(font, 5, 40, "FPS: " + engine->ConvertIntToString(engine->GetFPS()));
+				engine->RenderText(5, 0, "Space Chunks Alpha 0.3");
+				engine->RenderText(5, 15, engine->GetXyEngineVersion());
+				engine->RenderText(5, 30, "© 2014 Dominic Maas");
 
-			//engine->RenderText(font, 5, 70, "View Distance: " + engine->ConvertIntToString(world->GetViewDistance()));
-			//engine->RenderText(font, 5, 90, "Chunks: " + engine->ConvertIntToString(world->GetLoadedChunks()) + "  ( " + engine->ConvertIntToString(world->GetFrustumChunks())  + " )");
+				engine->RenderText(5, 50, "Render FPS: " + engine->ConvertIntToString((int)engine->GetFPS()));
+				engine->RenderText(5, 65, "Physics FPS: " + engine->ConvertIntToString((int)engine->GetPhysicsFPS()));
 
-			//std::string playerPosStr = " X: " + engine->ConvertIntToString((int)player->GetPos().x) + " Y: " + engine->ConvertIntToString((int)player->GetPos().y) + " Z: " + engine->ConvertIntToString((int)player->GetPos().z);
-			//engine->RenderText(font, 5, 110, "Player Position: " + playerPosStr);
+				engine->RenderText(5, 80, "View Distance: " + engine->ConvertIntToString(world->GetViewDistance()));
+				engine->RenderText(5, 95, "Chunks: " + engine->ConvertIntToString(world->GetLoadedChunks()) + "  (" + engine->ConvertIntToString(world->GetFrustumChunks()) + ")");
 
-			//std::string playerRotStr = " Pitch: " + engine->ConvertIntToString((int)player->getPitch()) + " Yaw: " + engine->ConvertIntToString((int)player->getYaw());
-			//engine->RenderText(font, 5, 130, "Player Rotation: " + playerRotStr);
+				std::string playerPosStr = " X: " + engine->ConvertIntToString((int)player->GetPosition().x) + " Y: " + engine->ConvertIntToString((int)player->GetPosition().y) + " Z: " + engine->ConvertIntToString((int)player->GetPosition().z);
+				engine->RenderText(5, 110, "Player Position: " + playerPosStr);
 
-			//engine->RenderText(font, 5, 150, "Seed: " + engine->ConvertIntToString(engine->GetSeed()));
+				std::string playerRotStr = " X: " + engine->ConvertIntToString((int)player->GetRotation().x) + " Y: " + engine->ConvertIntToString((int)player->GetRotation().y) + " Z: " + engine->ConvertIntToString((int)player->GetRotation().z);
+				engine->RenderText(5, 125, "Player Rotation: " + playerRotStr);
 
-			//engine->RenderText(font, 5, windowHeight - 25, spaceChunkLog);
-
-			//engine->RenderText(font, windowWidth - 200, windowHeight - 25, "G - Show Debug Screen");
-			//engine->RenderText(font, windowWidth - 200, windowHeight - 45, "R - Render Chunk 0, 0, 0");
-			//engine->RenderText(font, windowWidth - 200, windowHeight - 65, "L - TP To Chunk 0, 0, 0");
-			//engine->RenderText(font, windowWidth - 200, windowHeight - 85, "Q - Set Blocks at Your Position");
+				engine->RenderText(5, 140, "Seed: " + engine->ConvertIntToString(engine->GetSeed()));
 		}
+}
+
+void UpdatePhysics()
+{
+	player->UpdatePosition();
+
+	//if (!player->IsGrounded())
+	//	player->SetPosition(glm::vec3(player->GetPosition().x, player->GetPosition().y - 0.2f, player->GetPosition().z));
+
+	//world->UpdatePhysics(player);
 }
 
 int main(int, char**)
 {
-	engine = new XyEngine();
+	engine = new XyEngine(Init, Render, Input, UpdatePhysics);
 	world = new WorldManager(engine);
 
-	engine->SetFunctions(Init, Render, Input);
-	engine->CreateWindow(windowWidth, windowHeight, "SpaceChunks", 120);
+	engine->CreateWindow(1280, 720, "SpaceChunks", 120.0f);
 
 	delete player;
 	delete world;

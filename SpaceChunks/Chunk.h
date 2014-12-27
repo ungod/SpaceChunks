@@ -1,47 +1,54 @@
 #pragma once
 
 #include "XyEngine.h"
+#include "WorldManager.h"
+#include "Block.h"
 
-typedef glm::detail::tvec4<GLbyte, glm::precision::mediump> byte4;
+class WorldManager;
 
 class Chunk
 {
 public:
-	Chunk(glm::vec3 pos, XyEngine *engine);
+	Chunk(glm::vec3 pos, XyEngine *engine, WorldManager *world);
+	~Chunk();
+
 	void Render();
 	void Rebuild();
 
-	Chunk *GetChunk(int x, int y, int z);
 	glm::vec3 GetCenter();
 	glm::vec3 GetPosition();
+	Chunk* FindChunk(glm::vec3 pos);
 
-	uint32_t getBlock(int x, int y, int z);
-	void setBlock(int x, int y, int z, uint32_t type);
+	static BlockType GetTheoreticalBlock(glm::vec3 pos, glm::vec3 offset0, glm::vec3 offset1, glm::vec3 offset2);
+	static BlockType GetTheoreticalBlock(glm::vec3 pos);
 
-	virtual ~Chunk();
+	BlockType GetBlock(int x, int y, int z);
+	BlockType GetBlock(glm::vec3 pos);
 
-	bool ShouldRebuildChunk()
+	void SetBlock(int x, int y, int z, BlockType type);
+	
+	static float CalculateNoiseValue(glm::vec3 pos, glm::vec3 offset, float scale);
+	bool IsTransparent(int x, int y, int z);
+
+	bool ShouldRebuildChunk();
+	bool IsChunkLoaded();
+
+	Chunk* GetChunk(int x, int y, int z);
+
+	Block*** GetBlockArray()
 	{
-		return m_changed;
-	}
-
-	bool IsChunkLoaded()
-	{
-		return m_loaded;
-	}
-
-	void Unload()
-	{
-		
+		return m_pBlocks;
 	}
 
 private:	
 	glm::vec3 m_position;
-	bool m_loaded = false;
-	uint32_t m_blocks[CHUNK_X][CHUNK_Y][CHUNK_Z];
-	GLint m_attributeCoord;
-	bool m_changed;
-	XyEngine *renderer;
-	GLuint vbo;
-	int elements;
+	Block*** m_pBlocks;
+	bool m_pChanged;
+	bool m_pLoaded = false;
+
+	static XyEngine *m_pRenderer;
+	static WorldManager* m_pWorld;
+
+	GLuint m_pChunkID;
+	GLuint m_pTextureID;
 };

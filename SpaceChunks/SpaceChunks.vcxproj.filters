@@ -36,16 +36,10 @@
     <ClInclude Include="Frustum.h">
       <Filter>Header Files\XyEngine</Filter>
     </ClInclude>
-    <ClInclude Include="Matrices.h">
-      <Filter>Header Files\XyEngine</Filter>
-    </ClInclude>
-    <ClInclude Include="ShaderUtil.h">
-      <Filter>Header Files\XyEngine</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Header Files\XyEngine</Filter>
     </ClInclude>
-    <ClInclude Include="BlockUtil.h">
+    <ClInclude Include="Block.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -70,6 +64,9 @@
     </ClCompile>
     <ClCompile Include="Player.cpp">
       <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Block.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

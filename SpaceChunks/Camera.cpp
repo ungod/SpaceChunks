@@ -33,6 +33,12 @@ void Camera::LockCamera()
 	if (m_CamRotation.y > 360.0)
 		m_CamRotation.y -= 360;
 
+	if (m_CamRotation.z < 0.0)
+		m_CamRotation.z += 360;
+
+	if (m_CamRotation.z > 360.0)
+		m_CamRotation.z -= 360;
+
 	if (m_CamRotation.x > 90)
 		m_CamRotation.x = 90;
 
@@ -60,8 +66,8 @@ void Camera::UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn)
 		SDL_ShowCursor(SDL_DISABLE);
 		int tmpx, tmpy;
 		SDL_GetMouseState(&tmpx, &tmpy); 
-		m_CamRotation.y += mouseSpeed*(MidX - tmpx);
-		m_CamRotation.x += mouseSpeed*(MidY - tmpy);
+		m_CamRotation.y += mouseSpeed*(m_Engine->GetWindowMiddleWidth() - tmpx);
+		m_CamRotation.x += mouseSpeed*(m_Engine->GetWindowMiddleHeight() - tmpy);
 		LockCamera();
 
 		const Uint8 *state = SDL_GetKeyboardState(NULL);
@@ -94,7 +100,7 @@ void Camera::UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn)
 	}
 	m_Engine->RotateWorldMatrix_X(-m_CamRotation.x);
 	m_Engine->RotateWorldMatrix_Y(-m_CamRotation.y);
-	//m_Engine->RotateWorldMatrix_Z(-m_CamRotation.z);
+	m_Engine->RotateWorldMatrix_Z(-m_CamRotation.z);
 }
 
 void Camera::UpdateCamera()
