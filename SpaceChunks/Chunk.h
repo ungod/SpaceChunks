@@ -9,7 +9,10 @@ class WorldManager;
 class Chunk
 {
 public:
-	Chunk(glm::vec3 pos, XyEngine *engine, WorldManager *world);
+	Chunk(glm::vec3 pos, XyEngine *engine, WorldManager *world, int id);
+
+	void CreateChunk();
+
 	~Chunk();
 
 	void Render();
@@ -40,11 +43,17 @@ public:
 		return m_pBlocks;
 	}
 
+	int GetChunkId() {
+		return m_pChunkGlobalID;
+	}
+
 private:	
 	glm::vec3 m_position;
 	Block*** m_pBlocks;
 	bool m_pChanged;
 	bool m_pLoaded = false;
+
+	int m_pChunkGlobalID;
 
 	static XyEngine *m_pRenderer;
 	static WorldManager* m_pWorld;

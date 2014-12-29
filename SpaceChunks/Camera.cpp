@@ -49,6 +49,7 @@ void Camera::LockCamera()
 void Camera::MoveCamera(float distance, float direction)
 {
 	float rad = (m_CamRotation.y + direction) * M_PI / 180.0;
+
 	m_CamPosition.x -= sin(rad) * distance;
 	m_CamPosition.z -= cos(rad) * distance;
 }
@@ -56,7 +57,7 @@ void Camera::MoveCamera(float distance, float direction)
 void Camera::MoveCameraUp(float distance, float direction)
 {
 	float rad = (m_CamRotation.y + direction) * M_PI / 180.0;
-	m_CamPosition.y += sin(rad)*distance;
+	m_CamPosition.y += (sin(rad)*distance) + 1.0f;
 }
 
 void Camera::UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn)
@@ -74,19 +75,23 @@ void Camera::UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn)
 
 		if (state[SDL_SCANCODE_W])
 		{
-			MoveCamera(moveSpeed, 0.0);
+			if (!m_pLockFront)
+				MoveCamera(moveSpeed, 0.0);
 		}
 		else if (state[SDL_SCANCODE_S])
 		{
-			MoveCamera(moveSpeed, 180.0);
+			if (!m_pLockBack)
+				MoveCamera(moveSpeed, 180.0);
 		}
 		else if (state[SDL_SCANCODE_A])
 		{
-			MoveCamera(moveSpeed, 90.0);
+			if (!m_pLockLeft)
+				MoveCamera(moveSpeed, 90.0);
 		}
 		else if (state[SDL_SCANCODE_D])
 		{
-			MoveCamera(moveSpeed, 270);
+			if (!m_pLockRight)
+				MoveCamera(moveSpeed, 270);
 		}
 		else if (state[SDL_SCANCODE_SPACE])
 		{
@@ -105,5 +110,5 @@ void Camera::UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn)
 
 void Camera::UpdateCamera()
 {
-	m_Engine->TranslateWorldMatrix(-m_CamPosition);
+	m_Engine->TranslateWorldMatrix(-m_CamPosition.x, -m_CamPosition.y - 2.0f, -m_CamPosition.z);
 }

@@ -80,7 +80,7 @@ public:
 	void UpdateRebuildList();
 	void UpdateVisibilityList(glm::vec3 camPos);
 
-	void SetBlock(int x, int y, int z);
+	void SetBlock(int x, int y, int z, BlockType type);
 	BlockType GetBlock(int x, int y, int z);
 
 	void UpdatePhysics(Player* player);

@@ -1,6 +1,11 @@
 #pragma once
 #include "XyEngine.h"
 
+const int MOTION_FRONT = 0;
+const int MOTION_BACK = 1;
+const int MOTION_LEFT = 2;
+const int MOTION_RIGHT = 3;
+
 class Camera
 {
 private:
@@ -11,6 +16,8 @@ private:
 	void LockCamera();
 	void MoveCamera(float distance, float direction);
 	void MoveCameraUp(float distance, float direction);
+
+	bool m_pLockFront = false, m_pLockBack = false, m_pLockLeft = false, m_pLockRight = false;
 
 public:
 
@@ -24,6 +31,42 @@ public:
 
 	void UpdateControls(float moveSpeed, float mouseSpeed, bool mouseIn);
 	void UpdateCamera();
+
+	void LockMotion(int axis) {
+		switch (axis)
+		{
+		case MOTION_FRONT:
+			m_pLockFront = true;
+			break;
+		case MOTION_BACK:
+			m_pLockBack = true;
+			break;
+		case MOTION_LEFT:
+			m_pLockLeft = true;
+			break;
+		case MOTION_RIGHT:
+			m_pLockRight = true;
+			break;
+		}
+	}
+
+	void UnlockMotion(int axis) {
+		switch (axis)
+		{
+		case MOTION_FRONT:
+			m_pLockFront = false;
+			break;
+		case MOTION_BACK:
+			m_pLockBack = false;
+			break;
+		case MOTION_LEFT:
+			m_pLockLeft = false;
+			break;
+		case MOTION_RIGHT:
+			m_pLockRight = false;
+			break;
+		}
+	}
 };
 
 

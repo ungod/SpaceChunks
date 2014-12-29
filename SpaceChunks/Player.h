@@ -25,7 +25,16 @@ public:
 		m_Grounded = g;
 	}
 
+	Camera* GetCamera() {
+		return m_Camera;
+	}
+
 private:
+
+	glm::vec3 m_pPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 m_pRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+	XyEngine* m_pEngine;
+
 	glm::vec3 m_pos;
 	XyEngine* m_engine;
 	glm::vec3 m_rot;

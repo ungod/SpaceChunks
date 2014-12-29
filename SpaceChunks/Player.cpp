@@ -44,6 +44,6 @@ void Player::Update(bool mousein)
 	this->m_Camera->SetCameraPosition(this->m_pos);
 	this->m_Camera->SetCameraRotation(this->m_rot);
 
-	this->m_Camera->UpdateControls(0.3f, 0.05f, mousein);
+	this->m_Camera->UpdateControls(0.2f, 0.05f, mousein);
 	this->m_Camera->UpdateCamera();
 }

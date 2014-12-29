@@ -9,9 +9,9 @@ BlockType Chunk::GetTheoreticalBlock(glm::vec3 pos)
 {
 	int chunkSeed = m_pRenderer->GetSeed();
 
-	glm::vec3 grain0Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
-	glm::vec3 grain1Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
-	glm::vec3 grain2Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
+	glm::vec3 grain0Offset(chunkSeed * 100, chunkSeed * 100, chunkSeed * 100);
+	glm::vec3 grain1Offset(chunkSeed * 100, chunkSeed * 100, chunkSeed * 100);
+	glm::vec3 grain2Offset(chunkSeed * 100, chunkSeed * 100, chunkSeed * 100);
 
 	return GetTheoreticalBlock(pos, grain0Offset, grain1Offset, grain2Offset);
 }
@@ -19,16 +19,24 @@ BlockType Chunk::GetTheoreticalBlock(glm::vec3 pos)
 BlockType Chunk::GetTheoreticalBlock(glm::vec3 pos, glm::vec3 offset0, glm::vec3 offset1, glm::vec3 offset2)
 {
 
-	float heightBase = 20;
-	float maxHeight = CHUNK_Y - 20;
+	float heightBase = 10;
+	float maxHeight = CHUNK_Y - 10;
 	float heightSwing = maxHeight - heightBase;
 
-	float mountainValue = CalculateNoiseValue(pos, offset1, 0.007f);
+	float mountainValue = CalculateNoiseValue(pos, offset1, 0.005f);
+
+	float someOtherValue = CalculateNoiseValue(pos, offset0, 0.015f);
+
+	
 
 	mountainValue = sqrt(mountainValue);
 
+	mountainValue -= someOtherValue;
+
 	mountainValue *= heightSwing;
 	mountainValue += heightBase;
+
+	//caves?
 
 	if (mountainValue >= pos.y)
 		return BlockType::Grass;
@@ -36,12 +44,16 @@ BlockType Chunk::GetTheoreticalBlock(glm::vec3 pos, glm::vec3 offset0, glm::vec3
 
 }
 
-Chunk::Chunk(glm::vec3 pos, XyEngine *engine, WorldManager *world)
+Chunk::Chunk(glm::vec3 pos, XyEngine *engine, WorldManager *world, int id)
 {
 	m_position = pos;
 	m_pRenderer = engine;
 	Chunk::m_pWorld = world;
+	m_pChunkGlobalID = id;
+}
 
+void Chunk::CreateChunk()
+{
 	m_pBlocks = new Block**[CHUNK_X];
 	for (int i = 0; i < CHUNK_X; i++)
 	{
@@ -59,9 +71,9 @@ Chunk::Chunk(glm::vec3 pos, XyEngine *engine, WorldManager *world)
 	m_pRenderer->LoadTexture(m_pTextureID, "img/textures.jpg");
 	int chunkSeed = m_pRenderer->GetSeed();
 
-	glm::vec3 grain0Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
-	glm::vec3 grain1Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
-	glm::vec3 grain2Offset(chunkSeed * 10000, chunkSeed * 10000, chunkSeed * 10000);
+	glm::vec3 grain0Offset(chunkSeed * 100, chunkSeed * 100, chunkSeed * 100);
+	glm::vec3 grain1Offset(chunkSeed * 100, chunkSeed * 100, chunkSeed * 100);
+	glm::vec3 grain2Offset(chunkSeed * 100, chunkSeed * 100, chunkSeed * 100);
 
 	for (int x = 0; x < CHUNK_X; x++)
 	{
@@ -116,7 +128,7 @@ void Chunk::Rebuild()
 				float x = (float)_x;
 				float y = (float)_y;
 				float z = (float)_z;
-
+				/*
 				float texCoordsDirt[8] = 
 				{
 				//  X     Y
@@ -143,7 +155,34 @@ void Chunk::Rebuild()
 					0.125f, 0.0f,
 					0.125f, 1.0f
 				};
+				*/
 
+				float texCoordsDirt[8] =
+				{
+					//  X     Y
+					0.125f, 1.0f,
+					0.125f, 0.0f,
+					0.1875f, 0.0f,
+					0.1875f, 1.0f
+				};
+
+				float texCoordsGrass[8] =
+				{
+					//  X     Y
+					0.125f, 1.0f,
+					0.125f, 0.0f,
+					0.1875f, 0.0f,
+					0.1875f, 1.0f
+				};
+
+				float texCoordsSide[8] =
+				{
+					//  X     Y
+					0.125f, 1.0f,
+					0.125f, 0.0f,
+					0.1875f, 0.0f,
+					0.1875f, 1.0f
+				};
 
 				if (IsTransparent(_x, _y, _z - 1))
 				{

@@ -57,7 +57,10 @@ void Input(SDL_Event event)
 				enableLighting = !enableLighting;
 				break;
 			case SDLK_q:
-				world->SetBlock(player->GetPosition().x, player->GetPosition().y, player->GetPosition().z);
+				world->SetBlock(player->GetPosition().x, player->GetPosition().y, player->GetPosition().z, BlockType::Grass);
+				break;
+			case SDLK_e:
+				world->SetBlock(player->GetPosition().x, player->GetPosition().y - 1, player->GetPosition().z, BlockType::Air);
 				break;
 		}
 		break;
@@ -90,23 +93,22 @@ void Render()
 		if (isDebug)
 		{
 			engine->Set2D();
-				engine->RenderText(5, 0, "Space Chunks Alpha 0.3");
-				engine->RenderText(5, 15, engine->GetXyEngineVersion());
-				engine->RenderText(5, 30, "© 2014 Dominic Maas");
+				engine->RenderText(5, 0, "Space Chunks Alpha 0.3.1");
+				engine->RenderText(5, 15, "© 2014 - 2015 Dominic Maas");
 
-				engine->RenderText(5, 50, "Render FPS: " + engine->ConvertIntToString((int)engine->GetFPS()));
-				engine->RenderText(5, 65, "Physics FPS: " + engine->ConvertIntToString((int)engine->GetPhysicsFPS()));
+				engine->RenderText(5, 45, "Render FPS: " + engine->ConvertIntToString((int)engine->GetFPS()));
+				engine->RenderText(5, 60, "Physics FPS: " + engine->ConvertIntToString((int)engine->GetPhysicsFPS()));
 
-				engine->RenderText(5, 80, "View Distance: " + engine->ConvertIntToString(world->GetViewDistance()));
-				engine->RenderText(5, 95, "Chunks: " + engine->ConvertIntToString(world->GetLoadedChunks()) + "  (" + engine->ConvertIntToString(world->GetFrustumChunks()) + ")");
+				engine->RenderText(5, 90, "View Distance: " + engine->ConvertIntToString(world->GetViewDistance()));
+				engine->RenderText(5, 105, "Chunks: " + engine->ConvertIntToString(world->GetLoadedChunks()) + "  (" + engine->ConvertIntToString(world->GetFrustumChunks()) + ")");
 
 				std::string playerPosStr = " X: " + engine->ConvertIntToString((int)player->GetPosition().x) + " Y: " + engine->ConvertIntToString((int)player->GetPosition().y) + " Z: " + engine->ConvertIntToString((int)player->GetPosition().z);
-				engine->RenderText(5, 110, "Player Position: " + playerPosStr);
+				engine->RenderText(5, 135, "Player Position: " + playerPosStr);
 
 				std::string playerRotStr = " X: " + engine->ConvertIntToString((int)player->GetRotation().x) + " Y: " + engine->ConvertIntToString((int)player->GetRotation().y) + " Z: " + engine->ConvertIntToString((int)player->GetRotation().z);
-				engine->RenderText(5, 125, "Player Rotation: " + playerRotStr);
+				engine->RenderText(5, 150, "Player Rotation: " + playerRotStr);
 
-				engine->RenderText(5, 140, "Seed: " + engine->ConvertIntToString(engine->GetSeed()));
+				engine->RenderText(5, 180, "Seed: " + engine->ConvertIntToString(engine->GetSeed()));
 		}
 }
 
@@ -117,7 +119,7 @@ void UpdatePhysics()
 	//if (!player->IsGrounded())
 	//	player->SetPosition(glm::vec3(player->GetPosition().x, player->GetPosition().y - 0.2f, player->GetPosition().z));
 
-	//world->UpdatePhysics(player);
+	world->UpdatePhysics(player);
 }
 
 int main(int, char**)

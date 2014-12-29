@@ -51,7 +51,7 @@ private:
 	float frames = 0;
 	float fpsRate;
 
-	float m_physicsFrameTime = 1.0f / 60.0f;
+	float m_physicsFrameTime = 1.0f / 120.0f;
 	float pysicsFrames = 0;
 	float physicsRate;
 
@@ -112,7 +112,7 @@ public:
 	void GenSeed()
 	{
 		srand(time(0));
-		seed = rand() % 1000;
+		seed = rand();
 	}
 	void Set3D()
 	{
