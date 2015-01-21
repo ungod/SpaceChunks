@@ -46,10 +46,7 @@ void Input(SDL_Event event)
 			case SDLK_l:		
 				player->SetPosition(glm::vec3(0, 64, 0));		
 				break;
-
-			case SDLK_i:		
-				world->Dispose();
-				break;	
+	
 			case SDLK_F3:
 				isDebug = !isDebug;
 				break;
@@ -114,12 +111,10 @@ void Render()
 
 void UpdatePhysics()
 {
+	
 	player->UpdatePosition();
-
-	//if (!player->IsGrounded())
-	//	player->SetPosition(glm::vec3(player->GetPosition().x, player->GetPosition().y - 0.2f, player->GetPosition().z));
-
 	world->UpdatePhysics(player);
+	
 }
 
 int main(int, char**)
@@ -127,7 +122,7 @@ int main(int, char**)
 	engine = new XyEngine(Init, Render, Input, UpdatePhysics);
 	world = new WorldManager(engine);
 
-	engine->CreateWindow(1280, 720, "SpaceChunks", 120.0f);
+	engine->CreateWindow(1920, 1080, "SpaceChunks", 60.0f);
 
 	delete player;
 	delete world;

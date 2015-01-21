@@ -51,7 +51,7 @@ private:
 	float frames = 0;
 	float fpsRate;
 
-	float m_physicsFrameTime = 1.0f / 120.0f;
+	float m_physicsFrameTime = 1.0f / 60.0f;
 	float pysicsFrames = 0;
 	float physicsRate;
 
@@ -67,7 +67,7 @@ private:
 
 	int PhysicsThread();
 
-	const char* XyEngine_Version = "XyEngine 0.3.4";
+	const char* XyEngine_Version = "XyEngine 0.3.6";
 
 public:
 	XyEngine(void(*initFunc)(), void(*renderFunc)(), void(*inputFunc)(SDL_Event event), void(*physicsFunc)());
