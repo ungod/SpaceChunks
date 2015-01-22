@@ -4,6 +4,7 @@
 #include "WorldManager.h"
 #include "Block.h"
 
+// Set the World Manager class here to prevent compile issues
 class WorldManager;
 
 class Chunk
@@ -22,15 +23,15 @@ public:
 	glm::vec3 GetPosition();
 	Chunk* FindChunk(glm::vec3 pos);
 
-	static BlockType GetTheoreticalBlock(glm::vec3 pos, glm::vec3 offset0, glm::vec3 offset1, glm::vec3 offset2);
-	static BlockType GetTheoreticalBlock(glm::vec3 pos);
+	BlockType GetTheoreticalBlock(glm::vec3 pos, glm::vec3 offset0, glm::vec3 offset1, glm::vec3 offset2);
+	BlockType GetTheoreticalBlock(glm::vec3 pos);
 
 	BlockType GetBlock(int x, int y, int z);
 	BlockType GetBlock(glm::vec3 pos);
 
 	void SetBlock(int x, int y, int z, BlockType type);
 	
-	static float CalculateNoiseValue(glm::vec3 pos, glm::vec3 offset, float scale);
+	float CalculateNoiseValue(glm::vec3 pos, glm::vec3 offset, float scale);
 	bool IsTransparent(int x, int y, int z);
 
 	bool ShouldRebuildChunk();
@@ -48,15 +49,21 @@ public:
 	}
 
 private:	
+	// The chunk Position
 	glm::vec3 m_position;
+	// 3D array of blocks
 	Block*** m_pBlocks;
+	// Boolean for when vhunk is modified
 	bool m_pChanged;
+	// Is the chunk actaully loaded
 	bool m_pLoaded = false;
 
+	// The chunk ID
 	int m_pChunkGlobalID;
 
-	static XyEngine *m_pRenderer;
-	static WorldManager* m_pWorld;
+	// 
+	XyEngine *m_pRenderer;
+	WorldManager* m_pWorld;
 
 	GLuint m_pChunkID;
 	GLuint m_pTextureID;

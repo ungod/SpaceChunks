@@ -1,62 +1,99 @@
-#include "XyEngine.h"
-XyEngine* engine;
+/*
+|-----------------------------------------------------------
+| Space Chunks - Created by Dominic Maas
+|-----------------------------------------------------------
+| Feel Free to use this source code in your own projects.
+| And also feel free to show me your own projects!
+|-----------------------------------------------------------
+| Controls:
+| 
+| W - Forward
+| A - Left
+| S - Back
+| D - Right
+| 
+| F2 - Resets Players Position
+| F3 - Toggles Debug Information
+|
+| Q - Sets a block
+| E - Removes a block
+|-----------------------------------------------------------
+| Whats To Come:
+|
+| - SkyBox
+| - Smooth Blocks
+| - Infinite World
+| - Block Picking
+| - Nice Lighting System
+*/
 
+#include "XyEngine.h"
 #include "Player.h"
 #include "Chunk.h"
 #include "WorldManager.h"
 
-
 Player *player;
 WorldManager *world;
+XyEngine *engine;
 
+// Boolean for displaying the debug info on the screen
 bool isDebug = true;
-bool enableLighting = true;
 
-
+/*
+	This function creates everything and makes sure we are ready for rendering, 
+	it is passed into the CreateWindowRender method
+*/
 void Init()
 {
+	// Clear the screen with a light blue color (may be replaced with skybox in the future)
 	engine->ClearScreen(0.12f, 0.56f, 1.0f, 1.0f);
+
+	// Create the player, setting its position, rotation and passing in the engine
 	player = new Player(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), engine);
 
-	glClearColor(0.12f, 0.56f, 1.0f, 1.0f);
+	// Create the world, passing in the engine
+	world = new WorldManager(engine);
 
-	
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_MULTISAMPLE_ARB);
-
-	glViewport(0, 0, (GLsizei)engine->GetWindowWidth(), (GLsizei)engine->GetWindowHeight());
+	// Set the world to 3D rendering
 	engine->Set3D();
 
+	// Create a Seed for the world (May not use anymore)
 	engine->GenSeed();
 
+	//----- Display how long the world took to load in the console -----//
 	double StartTime = Time::GetTime();
 	world->UpdateSetupList();
 	double EndTime = Time::GetTime() - StartTime;
 	std::cout << "World Took " << EndTime << " Seconds to Load!" << std::endl;
+	//------------------------------------------------------------------//
 }
 
+/*
+	This function handles the games input, it is called within the engine, and 
+	requires a SDL_Event param
+*/
 void Input(SDL_Event event)
 {
+	// Switch on the event type
 	switch (event.type)
 	{
 	case SDL_KEYDOWN:
 		switch (event.key.keysym.sym)
 		{
-			case SDLK_l:		
+			case SDLK_F2:	
+				// Sets the player position
 				player->SetPosition(glm::vec3(0, 64, 0));		
 				break;
-	
 			case SDLK_F3:
+				// Toggles debug text on screen
 				isDebug = !isDebug;
 				break;
-			case SDLK_F4:
-				enableLighting = !enableLighting;
-				break;
 			case SDLK_q:
+				// Sets a block at the players position
 				world->SetBlock(player->GetPosition().x, player->GetPosition().y, player->GetPosition().z, BlockType::Grass);
 				break;
 			case SDLK_e:
+				// Removes a block below the players position
 				world->SetBlock(player->GetPosition().x, player->GetPosition().y - 1, player->GetPosition().z, BlockType::Air);
 				break;
 		}
@@ -64,17 +101,24 @@ void Input(SDL_Event event)
 	}
 }
  
+/*
+	Called 60 frames per second (or what you have set)
+*/
 void Render()
 {
+	// Clears the screen
 	engine->ClearScreen(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+	// Set rendering mode to 3D
 	engine->Set3D();
-
-
+		
+		// Updates the player position
 		player->Update(engine->IsMouseIn());
 
+		// Updates the world
 		world->Update(player->GetPosition(), player->GetRotation());
 		
+		//-- Lighting Stuff --//
 		GLfloat ambient_color[] = { 0.7f, 0.7f, 0.7f, 0.7f };
 		GLfloat light_position[] = { 1.0f, 1.0f, 1.0f, 0.0f };
 
@@ -84,11 +128,13 @@ void Render()
 		glEnable(GL_LIGHTING);
 		glEnable(GL_LIGHT0);
 		glShadeModel(GL_SMOOTH);
-
+		//--------------------//
 		
-
+		// If the debug varaible is true
 		if (isDebug)
 		{
+			// Set Rendering mode to 2D
+			// RenderText(x,y, string);
 			engine->Set2D();
 				engine->RenderText(5, 0, "Space Chunks Alpha 0.3.1");
 				engine->RenderText(5, 15, "© 2014 - 2015 Dominic Maas");
@@ -109,20 +155,26 @@ void Render()
 		}
 }
 
+/*
+	Physics is run in a seperate thread to the game, heavy precessing here
+	I will evenutally move all movement into here
+*/
 void UpdatePhysics()
 {
-	
-	player->UpdatePosition();
+	// Up date the world physics
 	world->UpdatePhysics(player);
-	
 }
 
+/*
+	Main Function for program
+*/
 int main(int, char**)
 {
+	// Create the engine, passing in the required functions
 	engine = new XyEngine(Init, Render, Input, UpdatePhysics);
-	world = new WorldManager(engine);
 
-	engine->CreateWindow(1920, 1080, "SpaceChunks", 60.0f);
+	// Create the window
+	engine->CreateWindow(1280, 720, "SpaceChunks", 60.0f);
 
 	delete player;
 	delete world;

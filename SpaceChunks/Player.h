@@ -7,39 +7,48 @@ class Player
 public:
 	Player(glm::vec3 pos, glm::vec3 rot, XyEngine* engine);
 
+	/*
+		Sets the players position
+	*/
 	void SetPosition(glm::vec3 pos);
+
+	/*
+		Returns the players position
+	*/
 	glm::vec3 GetPosition();
+
+	/*
+		Sets the players rotation
+	*/
 	void SetRotation(glm::vec3 rot);
+
+	/*
+		Returns the players rotation
+	*/
 	glm::vec3 GetRotation();
 
+	/*
+		Updates the Players position
+	*/
 	void Update(bool mousein);
-	void UpdatePosition();
 
-	bool IsGrounded()
-	{
-		return m_Grounded;
-	}
-
-	void SetGrounded(bool g)
-	{
-		m_Grounded = g;
-	}
-
-	Camera* GetCamera() {
-		return m_Camera;
-	}
+	/*
+		Returns the camera Class used by the player
+	*/
+	Camera* GetCamera() { return m_Camera; }
 
 private:
-
-	glm::vec3 m_pPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 m_pRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+	// Rendering Engine
 	XyEngine* m_pEngine;
 
+	// Player position
 	glm::vec3 m_pos;
-	XyEngine* m_engine;
+
+	// Player rotation
 	glm::vec3 m_rot;
+
+	// Camera Class
 	Camera* m_Camera;
-	bool m_Grounded;
 };
 
 

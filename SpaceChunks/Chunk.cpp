@@ -2,9 +2,6 @@
 
 #include <GLM/gtc/noise.hpp>
 
-WorldManager* Chunk::m_pWorld;
-XyEngine* Chunk::m_pRenderer;
-
 BlockType Chunk::GetTheoreticalBlock(glm::vec3 pos)
 {
 	int chunkSeed = m_pRenderer->GetSeed();

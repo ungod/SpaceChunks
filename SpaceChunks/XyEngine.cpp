@@ -101,6 +101,10 @@ int XyEngine::CreateWindow(int width, int height, char* title, float frameRate)
 	double frameCounter = 0;
 	frames = 0;
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_MULTISAMPLE_ARB);
+
 	m_InitFunc();
 
 	m_pPhysicsThread = SDL_CreateThread(StaticPhysicsThread, "PhysicsThread", this);
